@@ -1,0 +1,12 @@
+import { z } from "zod";
+import type { NextRequest } from "next/server";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
+import { authenticated,json,options } from "@/lib/api";
+import { cleanTemplateHtml } from "@/lib/templates";
+import { db,rows } from "@/lib/db";
+const input=z.object({name:z.string().trim().min(1).max(80),html:z.string().max(500000),expectedVersion:z.number().int().positive()});
+type TemplateRow=RowDataPacket&{id:string;name:string;html:string;version:number;created_at:Date;updated_at:Date;updated_by_email:string};
+const shape=(r:TemplateRow)=>({id:r.id,name:r.name,html:r.html,serverVersion:r.version,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at).getTime(),updatedBy:r.updated_by_email});
+export { options as OPTIONS };
+export async function PUT(request:NextRequest,{params}:{params:Promise<{id:string}>}){const auth=await authenticated(request);if("response" in auth)return auth.response;const parsed=input.safeParse(await request.json().catch(()=>null));if(!parsed.success)return json(request,{error:"Invalid template."},400);const {id}=await params;const html=cleanTemplateHtml(parsed.data.html);const [result]=await db.execute<ResultSetHeader>("update templates set name=?,html=?,updated_by=?,version=version+1 where id=? and version=? and deleted_at is null",[parsed.data.name,html,auth.user.id,id,parsed.data.expectedVersion]);if(!result.affectedRows)return json(request,{error:"This template was changed by someone else. Reload it before saving.",code:"VERSION_CONFLICT"},409);const found=await rows<TemplateRow[]>(`select t.id,t.name,t.html,t.version,t.created_at,t.updated_at,u.email updated_by_email from templates t join users u on u.id=t.updated_by where t.id=?`,[id]);return json(request,{template:shape(found[0])});}
+export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){const auth=await authenticated(request);if("response" in auth)return auth.response;const {id}=await params;const version=Number(new URL(request.url).searchParams.get("version"));if(!Number.isSafeInteger(version)||version<1)return json(request,{error:"Template version is required."},400);const [result]=await db.execute<ResultSetHeader>("update templates set deleted_at=now(3),updated_by=?,version=version+1 where id=? and version=? and deleted_at is null",[auth.user.id,id,version]);if(!result.affectedRows)return json(request,{error:"This template was changed by someone else.",code:"VERSION_CONFLICT"},409);return json(request,{ok:true});}

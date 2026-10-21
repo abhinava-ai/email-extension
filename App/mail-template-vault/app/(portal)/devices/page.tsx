@@ -1,0 +1,3 @@
+import { Laptop, MonitorSmartphone, RefreshCw } from "lucide-react";
+export const metadata = { title: "Devices" };
+export default function DevicesPage() { return <div className="page"><div className="page-heading"><div><h1>Devices</h1><p>See where your vault is connected and remove access when a device is no longer yours.</p></div><button className="button button-secondary"><RefreshCw size={16} />Refresh</button></div><div className="card empty-card"><span className="empty-icon"><MonitorSmartphone size={24} /></span><h2>No connected devices yet</h2><p>A device will appear after you sign in through the Mail Template Vault extension.</p><a className="button button-primary" href="/install"><Laptop size={17} />Install the extension</a></div></div>; }

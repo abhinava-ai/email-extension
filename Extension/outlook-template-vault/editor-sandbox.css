@@ -1,0 +1,85 @@
+:root { color-scheme: light; }
+[hidden] { display: none !important; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background: #fff;
+  color: #242424;
+  font-family: Aptos, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+body { position: relative; }
+#sandboxEditor { width: 100%; height: 100%; min-height: 0; }
+.sandbox-status {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 24px;
+  color: #667085;
+  font-size: 13px;
+  text-align: center;
+  background: #fff;
+}
+.sandbox-status[hidden] { display: none !important; }
+.sandbox-status.error { color: #b42318; }
+
+.jodit-container {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.jodit-toolbar__box {
+  position: sticky !important;
+  top: 0;
+  z-index: 10;
+  flex: 0 0 auto;
+  background: #fff !important;
+  border-color: #e4e7ec !important;
+}
+.jodit-toolbar-editor-collection { padding: 5px 6px !important; }
+.jodit-workplace {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: auto !important;
+  background: #fff !important;
+}
+.jodit-wysiwyg {
+  box-sizing: border-box;
+  min-height: 100% !important;
+  height: auto !important;
+  padding: 24px 28px !important;
+  background: #fff !important;
+  color: #242424;
+  font-family: Aptos, "Segoe UI", Arial, Helvetica, sans-serif;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+.jodit-source__mirror,
+.jodit-source textarea {
+  font-family: Consolas, "SFMono-Regular", Menlo, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  background: #fff !important;
+  color: #242424 !important;
+}
+.jodit-status-bar {
+  flex: 0 0 auto;
+  background: #fafbfc !important;
+  border-color: #e4e7ec !important;
+}
+.jodit-popup-container, .jodit-dialog__panel { color-scheme: light; }
+
+@media (max-width: 760px) {
+  .jodit-wysiwyg { padding: 18px !important; }
+}

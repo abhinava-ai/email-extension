@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mail Template Vault — Editor</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="editor-popup.css">
+</head>
+<body class="editor-popup-body">
+  <main class="popup-editor-shell">
+    <header class="popup-editor-header">
+      <div class="popup-editor-title-wrap">
+        <p id="editorMode" class="eyebrow">NEW TEMPLATE</p>
+        <h1 id="editorTitle">Create template</h1>
+      </div>
+      <div class="popup-header-actions">
+        <span id="saveState" class="save-state">Loading editor…</span>
+        <button id="saveBtn" class="secondary compact header-action-btn" type="submit" form="templateForm" data-close="false" disabled>Save</button>
+        <button id="saveCloseBtn" class="primary compact header-action-btn" type="submit" form="templateForm" data-close="true" disabled>Save &amp; Close</button>
+        <button id="closeBtn" class="secondary compact header-action-btn" type="button">Close</button>
+      </div>
+    </header>
+
+    <form id="templateForm" class="popup-editor-form">
+      <div class="popup-meta-row">
+        <div class="popup-name-field">
+          <label class="field-label" for="templateName">Template name</label>
+          <input id="templateName" class="name-input" maxlength="80" placeholder="e.g. Sponsored article reply" required disabled>
+        </div>
+      </div>
+
+      <section id="editorCard" class="popup-editor-card is-loading" aria-label="Email template editor">
+        <iframe id="editorFrame" class="jodit-sandbox-frame" src="about:blank" title="Rich text template editor"></iframe>
+        <textarea id="templateBody" class="fallback-editor" aria-label="Fallback HTML template editor" hidden></textarea>
+
+        <div id="editorLoader" class="editor-loader" role="status" aria-live="polite">
+          <div id="loaderBusy" class="editor-loader-state">
+            <span class="editor-spinner" aria-hidden="true"></span>
+            <strong>Loading editor…</strong>
+            <span>Preparing Mail Template Vault</span>
+          </div>
+          <div id="loaderError" class="editor-loader-state editor-loader-error" hidden>
+            <span class="editor-error-icon" aria-hidden="true">!</span>
+            <strong>Editor could not be loaded</strong>
+            <span>Try again, or use the HTML fallback to recover your draft.</span>
+            <div class="editor-loader-actions">
+              <button id="retryEditorBtn" class="primary compact" type="button">Retry</button>
+              <button id="useFallbackBtn" class="secondary compact" type="button">Use HTML fallback</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p id="formError" class="form-error popup-form-error" hidden></p>
+    </form>
+
+    <div id="toast" class="toast popup-toast" hidden></div>
+  </main>
+
+  <script src="sanitizer.js"></script>
+  <script src="storage.js"></script>
+  <script src="editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "Mail Template Vault for Outlook",
+  "version": "1.2.0",
+  "description": "Save, sync, clean, manage, and insert reusable HTML email templates into Outlook on the web.",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://outlook.office.com/*",
+    "https://outlook.office365.com/*",
+    "https://outlook.live.com/*",
+    "https://outlook.cloud.microsoft/*",
+    "https://*.abhinava.ai/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Mail Template Vault"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.cloud.microsoft/*"
+      ],
+      "js": [
+        "sanitizer.js",
+        "content.js",
+        "floating.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["sidepanel.html"],
+      "matches": ["https://outlook.office.com/*", "https://outlook.office365.com/*", "https://outlook.live.com/*", "https://outlook.cloud.microsoft/*"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1l3QV+jCihF1IuTAkbX/CYWIDqhLKx2FZS3W0gJBGzCgOyIJflw9L70UxmQxJLKM5SiZRMc8aZ/33lFlhzivneWtuViUCxbyuhUkjFw5AsRrv6sPb385X9ySo/ItEeMNWvx4tGAawkt2d6G+CDEVFxJWZvXSgxIArRjn2u7vrlkZFuFxOtJwzVu5rXYfwUKKByL0m7XSTnZTd3P5AE92mZpB2Xy45MsX5EXItVILPe9bjD8U8T0YawYD3bEEzXdJWHQk+zIEp02kCViNMPZi5GyLwlUbinEb20x2VWcJa4CEzgBZCeXl1FYO0pzyjPlzQdaXDaoFXnTBFnuuQGqeuwIDAQAB",
+  "sandbox": {
+    "pages": [
+      "editor-sandbox.html"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://*.abhinava.ai http://localhost:3000;",
+    "sandbox": "sandbox allow-scripts allow-forms allow-modals allow-popups; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'none';"
+  }
+}

@@ -1,0 +1,42 @@
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+**/secrets/
+
+# Dependencies
+node_modules/
+
+# Application and package-manager build output
+.next/
+dist/
+build/
+release/
+out/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# Supabase local state and generated artifacts
+supabase/.branches/
+supabase/.temp/
+
+# Logs and local tooling
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Never commit provider credentials or local secret exports
+*service-role*
+*service_role*
+*openai-api-key*
+*openai_api_key*
+

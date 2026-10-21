@@ -1,0 +1,59 @@
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
+import type { RowDataPacket } from "mysql2";
+import { db, rows } from "@/lib/db";
+
+export const SESSION_COOKIE = "mtv_session";
+const SESSION_DAYS = 30;
+export type AuthUser = { id: string; email: string; displayName: string; role: "admin" | "member"; mustChangePassword: boolean };
+type UserRow = RowDataPacket & { id:string; email:string; display_name:string; role:"admin"|"member"; must_change_password:number };
+const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+
+export async function verifyPassword(password: string, hash: string) {
+  const validShape = /^\$2[aby]\$/.test(hash);
+  const candidate = validShape ? hash : "$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv";
+  return bcrypt.compare(password, candidate);
+}
+export async function hashPassword(password: string) { return bcrypt.hash(password, 12); }
+
+export async function createSession(userId: string, userAgent = "") {
+  const token = randomBytes(32).toString("base64url");
+  const expires = new Date(Date.now() + SESSION_DAYS * 86400000);
+  await db.execute("insert into sessions (id,user_id,token_hash,expires_at,user_agent) values (?,?,?,?,?)",
+    [randomUUID(), userId, tokenHash(token), expires, userAgent.slice(0, 500)]);
+  return { token, expires };
+}
+
+export async function revokeSession(token: string | null) {
+  if (token) await db.execute("delete from sessions where token_hash=?", [tokenHash(token)]);
+}
+
+async function userForToken(token: string | null): Promise<AuthUser | null> {
+  if (!token || token.length < 32) return null;
+  const result = await rows<UserRow[]>(`select u.id,u.email,u.display_name,u.role,u.must_change_password
+    from sessions s join users u on u.id=s.user_id
+    where s.token_hash=? and s.expires_at>now(3) and u.active=1 limit 1`, [tokenHash(token)]);
+  const row = result[0];
+  return row ? { id:row.id, email:row.email, displayName:row.display_name, role:row.role, mustChangePassword:Boolean(row.must_change_password) } : null;
+}
+
+export function bearerToken(request: NextRequest) {
+  const value = request.headers.get("authorization") || "";
+  return value.startsWith("Bearer ") ? value.slice(7).trim() : request.cookies.get(SESSION_COOKIE)?.value || null;
+}
+export async function requestUser(request: NextRequest) { return userForToken(bearerToken(request)); }
+export async function currentUser() { return userForToken((await cookies()).get(SESSION_COOKIE)?.value || null); }
+
+export function secureCookie(token: string, expires: Date) {
+  return { name:SESSION_COOKIE, value:token, httpOnly:true, secure:process.env.NODE_ENV === "production", sameSite:"strict" as const, path:"/", expires };
+}
+
+export function passwordIsStrong(value: string) {
+  return value.length >= 12 && value.length <= 128 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value);
+}
+
+export function constantTimeEqual(left: string, right: string) {
+  const a=Buffer.from(left); const b=Buffer.from(right); return a.length === b.length && timingSafeEqual(a,b);
+}

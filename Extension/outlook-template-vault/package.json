@@ -1,0 +1,17 @@
+{
+  "name": "outlook-template-vault",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "vendor": "node scripts/vendor-jodit.cjs",
+    "build:auth": "node scripts/build-auth.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "jodit": "4.15.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "esbuild": "^0.25.0"
+  }
+}
