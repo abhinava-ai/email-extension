@@ -60,7 +60,7 @@
         .bar button{width:28px;height:28px;border:0;border-radius:7px;color:#fff;background:rgba(255,255,255,.12);font:700 16px system-ui;cursor:pointer}
         .bar button:hover{background:rgba(255,255,255,.22)}
         iframe{width:100%;height:100%;flex:1;border:0;background:#f8faf9}
-        .bubble{position:fixed;right:22px;bottom:22px;width:58px;height:58px;padding:0;display:grid;place-items:center;color:#173b32;background:#ddff98;border:3px solid #173b32;border-radius:50%;box-shadow:0 12px 30px rgba(15,35,29,.3);pointer-events:auto;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+        .bubble{position:fixed;right:22px;bottom:22px;width:58px;height:58px;padding:0;display:grid;place-items:center;color:#fff;background:#173b32;border:2px solid rgba(255,255,255,.9);border-radius:50%;box-shadow:0 12px 30px rgba(15,35,29,.34);pointer-events:auto;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
         .bubble:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 16px 34px rgba(15,35,29,.34)}
         .bubble:focus-visible{outline:3px solid #fff;outline-offset:3px}
         .bubble svg{width:27px;height:27px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round}

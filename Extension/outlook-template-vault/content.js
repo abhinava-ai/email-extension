@@ -55,7 +55,7 @@
     assistantShadow = assistantHost.attachShadow({ mode: 'open' });
     assistantShadow.innerHTML = `
       <style>
-        *{box-sizing:border-box}button,input,textarea{font:inherit}button{cursor:pointer}
+        *{box-sizing:border-box}[hidden]{display:none!important}button,input,textarea{font:inherit}button{cursor:pointer}
         .trigger{position:fixed;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid #d7ddd9;border-radius:11px;color:#fff;background:#173b32;box-shadow:0 6px 20px rgba(15,35,29,.22);pointer-events:auto;font:800 13px/1 system-ui,sans-serif}
         .trigger:hover{background:#245648}.trigger:focus-visible,.panel button:focus-visible,.panel input:focus-visible{outline:2px solid #28745e;outline-offset:2px}
         .panel{position:fixed;width:min(330px,calc(100vw - 20px));max-height:min(470px,calc(100vh - 20px));overflow:auto;padding:12px;color:#17221f;background:#fff;border:1px solid #dce3dd;border-radius:14px;box-shadow:0 22px 55px rgba(15,35,29,.2);pointer-events:auto;font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
