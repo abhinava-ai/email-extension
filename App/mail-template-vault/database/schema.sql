@@ -22,14 +22,6 @@ create table if not exists sessions (
   index sessions_user_idx (user_id), index sessions_expiry_idx (expires_at)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
-create table if not exists login_attempts (
-  attempt_key char(64) primary key,
-  failures smallint unsigned not null default 0,
-  blocked_until timestamp(3) null,
-  updated_at timestamp(3) not null default current_timestamp(3) on update current_timestamp(3),
-  index login_attempts_cleanup_idx (updated_at)
-) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
-
 create table if not exists templates (
   id varchar(100) primary key,
   name varchar(80) not null,
