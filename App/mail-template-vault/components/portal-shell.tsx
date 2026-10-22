@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bell, CreditCard, Download, FileText, LayoutDashboard, Mail } from "lucide-react";
+import { Bell, CreditCard, Download, FileText, LayoutDashboard, Mail } from "lucide-react";
 import { SignOutButton } from "./sign-out-button";
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/templates", label: "Templates", icon: FileText },
   { href: "/account", label: "Account & plan", icon: CreditCard },
-  { href: "/usage", label: "AI usage", icon: BarChart3 },
   { href: "/install", label: "Install extension", icon: Download },
 ];
 

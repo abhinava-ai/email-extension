@@ -1,4 +1,0 @@
-[functions.ai-email]
-# CORS preflight requests do not include a user JWT. The function explicitly
-# validates every non-OPTIONS request with createSupabaseContext(auth: "user").
-verify_jwt = false

@@ -4,7 +4,7 @@ Private Chrome Manifest V3 extension for searching, editing, and inserting share
 
 ## Private API
 
-Set `apiBaseUrl` and `accountPortalUrl` in `supabase-config.js` before packaging. Despite its legacy filename, this file now contains public endpoints only; it contains no Supabase, MySQL, or OpenAI credentials. Run `npm run build:auth` after authentication source changes.
+Set `apiBaseUrl` and `accountPortalUrl` in `supabase-config.js` before packaging. Despite its legacy filename, this file now contains public endpoints only; it contains no Supabase or MySQL credentials. Run `npm run build:auth` after authentication source changes.
 
 Authentication uses an opaque API session token in trusted `chrome.storage.local`. Registration is disabled. The two initial users are provisioned by the server and must change their temporary password in the web portal before template access is allowed.
 
@@ -14,7 +14,7 @@ MySQL is authoritative. The extension stores a local offline cache and imports e
 
 Clicking the toolbar icon toggles a draggable, resizable window inside Outlook. It can be minimized or closed and remembers its geometry. The template editor opens inside that window and uses the packaged Jodit 4.15.1 editor. The original Chrome side-panel files remain packaged as the window’s internal UI and for rollback compatibility, but the toolbar no longer opens Chrome’s fixed side panel.
 
-The smaller contextual assistant remains next to an active compose editor. It supports template insertion, AI Reply, and writing improvements. Thread context is extracted only after explicit AI use, is limited to the visible conversation, and is not persisted. The extension never clicks Send.
+The smaller contextual template picker remains next to an active compose editor and inserts selected templates at the cursor. It does not inspect conversation threads and never clicks Send.
 
 ## Install/update
 

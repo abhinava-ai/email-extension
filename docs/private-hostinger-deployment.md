@@ -24,4 +24,4 @@ powershell -ExecutionPolicy Bypass -File scripts/package-extension.ps1 `
 Replace the example with the deployed app URL. The URL is mandatory; packaging removes
 the localhost endpoint and narrows network permission to that exact HTTPS host.
 
-Test login throttling, mandatory password changes, editing in both directions, version conflicts, one-time local import, offline cache behavior, AI replies, and floating-window drag/resize/minimize behavior.
+Test login throttling, mandatory password changes, editing in both directions, version conflicts, one-time local import, offline cache behavior, template insertion, and floating-window drag/resize/minimize behavior.

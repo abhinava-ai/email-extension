@@ -10,4 +10,4 @@ Hostinger-compatible Next.js application and authenticated API backed by MySQL. 
 
 Both initial users are administrators and must replace their temporary password after first login. The bootstrap command never overwrites an existing password.
 
-For production, set secrets in Hostinger hPanel, use `DB_HOST=127.0.0.1`, build with `npm run build`, and start with `npm start`. Never expose database or OpenAI credentials through `NEXT_PUBLIC_*` variables or extension files.
+For production, set secrets in Hostinger hPanel, use `DB_HOST=127.0.0.1`, build with `npm run build`, and start with `npm start`. Never expose database credentials through `NEXT_PUBLIC_*` variables or extension files.

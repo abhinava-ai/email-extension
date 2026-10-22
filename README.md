@@ -19,9 +19,9 @@ docs/                      Architecture, security, and operational documentation
 
 - Preserve the existing extension identity, manifest key, storage keys, and user data compatibility.
 - Do not commit `.env`, `.env.local`, private keys, generated build output, or dependency directories.
-- Never commit MySQL passwords, temporary admin passwords, Supabase service-role keys, or OpenAI API keys.
+- Never commit MySQL passwords, temporary administrator passwords, or other credentials.
 - The active schema is `App/mail-template-vault/database/schema.sql`; the `supabase/` folder is retained for history and is not used in the private deployment.
-- Keep database credentials and OpenAI keys in Hostinger server environment variables only.
+- Keep database credentials in Hostinger server environment variables only.
 
 Each product area should document its own setup commands and required public configuration without including secret values.
 

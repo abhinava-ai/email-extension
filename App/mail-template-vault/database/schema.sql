@@ -54,11 +54,3 @@ create table if not exists audit_events (
   index audit_created_idx (created_at), index audit_user_idx (user_id)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
-create table if not exists ai_usage (
-  id bigint unsigned auto_increment primary key, user_id char(36) not null,
-  period_start date not null, request_count int unsigned not null default 0,
-  input_tokens bigint unsigned not null default 0, output_tokens bigint unsigned not null default 0,
-  updated_at timestamp(3) not null default current_timestamp(3) on update current_timestamp(3),
-  constraint ai_usage_user_fk foreign key (user_id) references users(id) on delete cascade,
-  unique key ai_usage_period_unique (user_id, period_start)
-) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
