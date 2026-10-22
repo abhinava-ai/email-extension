@@ -18,8 +18,9 @@ export async function POST(request:NextRequest) {
     await new Promise(resolve=>setTimeout(resolve,350));
     return json(request,{error:"Email or password is incorrect."},401);
   }
-  const session=await createSession(user.id,request.headers.get("user-agent")||"");
-  await db.execute("insert into audit_events(user_id,event_type) values (?,?)",[user.id,"auth.login"]);
+  const ip=(request.headers.get("x-forwarded-for")||request.headers.get("x-real-ip")||"").split(",")[0].trim();
+  const session=await createSession(user.id,request.headers.get("user-agent")||"",parsed.data.client,ip);
+  await db.execute("insert into audit_events(user_id,event_type,metadata_json) values (?,?,?)",[user.id,"auth.login",JSON.stringify({client:parsed.data.client})]);
   const response=json(request,{token:parsed.data.client==="extension"?session.token:undefined,user:{id:user.id,email:user.email,displayName:user.display_name,role:user.role,mustChangePassword:Boolean(user.must_change_password)}});
   response.cookies.set(secureCookie(session.token,session.expires));
   return response;

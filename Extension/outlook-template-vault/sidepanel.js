@@ -12,15 +12,7 @@
     templateList: document.getElementById('templateList'),
     emptyState: document.getElementById('emptyState'),
     searchInput: document.getElementById('searchInput'),
-    newTemplateBtn: document.getElementById('newTemplateBtn'),
-    emptyNewBtn: document.getElementById('emptyNewBtn'),
-    syncBanner: document.getElementById('syncBanner'),
-    syncText: document.getElementById('syncText'),
-    retrySyncBtn: document.getElementById('retrySyncBtn'),
     toast: document.getElementById('toast'),
-    exportBtn: document.getElementById('exportBtn'),
-    importBtn: document.getElementById('importBtn'),
-    importFile: document.getElementById('importFile'),
     signedOutView: document.getElementById('signedOutView'),
     signedInView: document.getElementById('signedInView'),
     showSignInBtn: document.getElementById('showSignInBtn'),
@@ -56,24 +48,12 @@
     return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
   }
 
-  function makeId() {
-    if (crypto.randomUUID) return crypto.randomUUID();
-    return `template-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
   function showToast(message, isError = false) {
     clearTimeout(state.toastTimer);
     el.toast.textContent = message;
     el.toast.classList.toggle('error', isError);
     el.toast.hidden = false;
     state.toastTimer = setTimeout(() => { el.toast.hidden = true; }, 2800);
-  }
-
-  function setSyncStatus(text, mode = '') {
-    el.syncText.textContent = text;
-    el.syncBanner.classList.remove('synced', 'warning');
-    if (mode) el.syncBanner.classList.add(mode);
-    el.retrySyncBtn.hidden = mode !== 'warning';
   }
 
   function showAuthForm(mode) {
@@ -99,9 +79,10 @@
     el.accountName.textContent = name;
     el.accountEmail.textContent = email;
     el.accountAvatar.textContent = (name || email || 'A').slice(0, 1).toUpperCase();
-    const plan = 'Private';
-    el.accountPlan.textContent = plan;
-    el.accountPlan.classList.toggle('pro', plan !== 'Free');
+    if (el.accountPlan) {
+      el.accountPlan.textContent = 'Private';
+      el.accountPlan.classList.add('pro');
+    }
     el.authForm.hidden = true;
   }
 
@@ -139,15 +120,13 @@
     for (const template of filtered) {
       const card = document.createElement('article');
       card.className = 'template-card';
+      card.dataset.insert = template.id;
+      card.title = `Insert ${template.name} into Outlook`;
       card.innerHTML = `
-        <button class="template-insert" type="button" data-insert="${escapeHtml(template.id)}" title="Insert into Outlook">
+        <button class="template-insert" type="button" title="Insert into Outlook">
           <span class="template-name">${escapeHtml(template.name)}</span>
           <span class="template-preview">${escapeHtml(plainPreview(template.html) || 'Empty template')}</span>
         </button>
-        <div class="card-actions">
-          <button type="button" data-edit="${escapeHtml(template.id)}" title="Open large editor" aria-label="Edit ${escapeHtml(template.name)}">✎</button>
-          <button type="button" class="delete" data-delete="${escapeHtml(template.id)}" title="Delete" aria-label="Delete ${escapeHtml(template.name)}">×</button>
-        </div>
       `;
       el.templateList.appendChild(card);
     }
@@ -156,8 +135,6 @@
   async function loadTemplates({ quiet = false } = {}) {
     if (state.refreshing) { state.refreshAgain = true; return; }
     state.refreshing = true;
-    if (!quiet) setSyncStatus('Loading templates…');
-
     try {
       const result = await TemplateStorage.load();
       if (result.entitlements) state.entitlements = result.entitlements;
@@ -168,91 +145,13 @@
 
       render();
       renderAccount(globalThis.ExtensionAuth?.getState());
-      el.exportBtn.disabled = el.importBtn.disabled = false;
-
-      const limitReached = Number.isSafeInteger(state.entitlements.templateLimit) &&
-        state.templates.length >= state.entitlements.templateLimit;
-      el.newTemplateBtn.title = limitReached ? 'Free plan template limit reached' : 'Create a template';
-      el.emptyNewBtn.title = el.newTemplateBtn.title;
-
-      if (result.remote) {
-        setSyncStatus('Synced with private workspace', 'synced');
-      } else if (result.error) {
-        setSyncStatus('Offline cache • Server unavailable', 'warning');
-      } else if (!result.syncAvailable) {
-        setSyncStatus('Local storage active • Sync unavailable', 'warning');
-      } else if (result.syncPending) {
-        setSyncStatus('Saved locally • Changes pending sync', 'warning');
-      } else if (result.source === 'sync') {
-        setSyncStatus('Synced from Chrome • Local copy updated', 'synced');
-      } else {
-        setSyncStatus('Saved locally • Chrome Sync ready', 'synced');
-      }
+      if (!result.remote && result.error && !quiet) showToast(result.error, true);
     } finally {
       state.refreshing = false;
       if (state.refreshAgain) {
         state.refreshAgain = false;
         loadTemplates({ quiet: true }).catch(console.error);
       }
-    }
-  }
-
-  function showPersistStatus(result) {
-    if (result.remote || result.synced) {
-      setSyncStatus('Synced with private workspace', 'synced');
-      return;
-    }
-    if (result.synced) {
-      setSyncStatus('Saved locally • Chrome Sync active', 'synced');
-    } else {
-      setSyncStatus('Saved locally • Sync quota/error', 'warning');
-    }
-  }
-
-  async function openEditorPopup(templateId = '') {
-    if (!templateId && Number.isSafeInteger(state.entitlements.templateLimit) &&
-        state.templates.length >= state.entitlements.templateLimit) {
-      showToast(`Free includes up to ${state.entitlements.templateLimit} templates. Upgrade to Pro for unlimited templates.`, true);
-      return;
-    }
-    const embedded = new URLSearchParams(location.search).get('floating') === '1';
-    const query = `${templateId ? `?id=${encodeURIComponent(templateId)}&` : '?'}embedded=1`;
-    const url = chrome.runtime.getURL(`editor.html${query}`);
-
-    if (embedded) {
-      const overlay = document.createElement('iframe');
-      overlay.id = 'embeddedEditor';
-      overlay.src = url;
-      overlay.title = 'Template editor';
-      overlay.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff;z-index:9999';
-      document.body.appendChild(overlay);
-      return;
-    }
-
-    try {
-      const current = await chrome.windows.getCurrent();
-      const targetWidth = Math.max(700, Math.min(900, (current.width || 1200) - 80));
-      const targetHeight = Math.max(580, Math.min(720, (current.height || 900) - 60));
-      const left = Number.isFinite(current.left) && Number.isFinite(current.width)
-        ? Math.max(0, Math.round(current.left + ((current.width - targetWidth) / 2)))
-        : undefined;
-      const top = Number.isFinite(current.top) && Number.isFinite(current.height)
-        ? Math.max(0, Math.round(current.top + ((current.height - targetHeight) / 2)))
-        : undefined;
-
-      const createData = {
-        url,
-        type: 'popup',
-        focused: true,
-        width: targetWidth,
-        height: targetHeight
-      };
-      if (Number.isFinite(left)) createData.left = left;
-      if (Number.isFinite(top)) createData.top = top;
-      await chrome.windows.create(createData);
-    } catch (error) {
-      console.warn('Could not open extension popup window, falling back to a normal window.', error);
-      window.open(url, '_blank', 'popup=yes,width=900,height=720,resizable=yes,scrollbars=yes');
     }
   }
 
@@ -297,6 +196,7 @@
       if (account.user?.mustChangePassword) throw new Error('Change your temporary password in the web app before using templates.');
       el.authForm.reset();
       el.authForm.hidden = true;
+      await loadTemplates({ quiet: true });
       showToast('Signed in');
     } catch (error) {
       el.authError.textContent = error?.message || 'Could not complete account authentication.';
@@ -309,7 +209,9 @@
     el.signOutBtn.disabled = true;
     try {
       await ExtensionAuth.signOut();
-      showToast('Signed out. Your local templates are still available.');
+      state.templates = [];
+      render();
+      showToast('Signed out');
     } catch (error) {
       showToast(error?.message || 'Could not sign out.', true);
     } finally {
@@ -317,108 +219,13 @@
     }
   });
 
-  el.newTemplateBtn.addEventListener('click', () => openEditorPopup());
-  el.emptyNewBtn.addEventListener('click', () => openEditorPopup());
   el.searchInput.addEventListener('input', render);
-  el.retrySyncBtn.addEventListener('click', async () => {
-    el.retrySyncBtn.disabled = true;
-    try {
-      const result = await TemplateStorage.reconcile();
-      await loadTemplates({ quiet: true });
-      if (!result.synced) showToast(result.error || 'Sync is still pending. Your local templates are safe.', true);
-    } catch (error) {
-      showToast(error.message || 'Could not retry sync.', true);
-    } finally {
-      el.retrySyncBtn.disabled = false;
-    }
-  });
 
   el.templateList.addEventListener('click', async (event) => {
-    const insertButton = event.target.closest('[data-insert]');
-    const editButton = event.target.closest('[data-edit]');
-    const deleteButton = event.target.closest('[data-delete]');
-
-    if (insertButton) {
-      const template = state.templates.find((item) => item.id === insertButton.dataset.insert);
+    const insertTarget = event.target.closest('[data-insert]');
+    if (insertTarget) {
+      const template = state.templates.find((item) => item.id === insertTarget.dataset.insert);
       if (template) await insertTemplate(template);
-      return;
-    }
-
-    if (editButton) {
-      await openEditorPopup(editButton.dataset.edit);
-      return;
-    }
-
-    if (deleteButton) {
-      const template = state.templates.find((item) => item.id === deleteButton.dataset.delete);
-      if (!template) return;
-      if (!confirm(`Delete “${template.name}”?`)) return;
-      deleteButton.disabled = true;
-      try {
-        const result = await TemplateStorage.remove(template.id, template.revision);
-        await loadTemplates({ quiet: true });
-        showPersistStatus(result);
-        showToast('Template deleted');
-      } catch (error) {
-        showToast(error.message || 'Could not delete the template.', true);
-      } finally {
-        deleteButton.disabled = false;
-      }
-    }
-  });
-
-  el.exportBtn.addEventListener('click', () => {
-    const payload = {
-      app: 'Mail Template Vault for Outlook',
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      templates: state.templates
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `outlook-templates-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-
-  el.importBtn.addEventListener('click', () => el.importFile.click());
-  el.importFile.addEventListener('change', async () => {
-    const file = el.importFile.files?.[0];
-    if (!file) return;
-
-    try {
-      if (file.size > 5 * 1024 * 1024) throw new Error('Backups must be smaller than 5 MB.');
-      const parsed = JSON.parse(await file.text());
-      if (!Array.isArray(parsed?.templates) || parsed.templates.length > TemplateStorage.MAX_TEMPLATES) {
-        throw new Error('Invalid backup or too many templates (maximum 500).');
-      }
-
-      const clean = parsed.templates
-        .map((item) => {
-          const record = TemplateStorage.validateTemplate({
-            ...item,
-            id: item?.id ?? makeId(),
-            createdAt: item?.createdAt ?? Date.now(),
-            updatedAt: item?.updatedAt ?? Date.now()
-          });
-          return { ...record, html: TemplateSanitizer.sanitize(record.html) };
-        });
-      if (new Set(clean.map((item) => item.id)).size !== clean.length) {
-        throw new Error('The backup contains duplicate template IDs.');
-      }
-
-      if (!confirm(`Import ${clean.length} template(s)? This will replace the current list.`)) return;
-      const result = await TemplateStorage.replaceFromImport(clean);
-      await loadTemplates({ quiet: true });
-      showPersistStatus(result);
-      showToast('Templates imported');
-    } catch (error) {
-      showToast(error?.message || 'Could not import the backup.', true);
-    } finally {
-      el.importFile.value = '';
     }
   });
 
@@ -434,16 +241,20 @@
     }
   });
 
-  window.addEventListener('message', (event) => {
-    if (event.origin !== location.origin || event.data?.type !== 'MTV_EDITOR_CLOSE') return;
-    document.getElementById('embeddedEditor')?.remove();
-    loadTemplates({ quiet: true }).catch(console.error);
-  });
+  const refreshFromDashboard = () => {
+    if (document.visibilityState === 'visible' && ExtensionAuth.getState()?.user) {
+      loadTemplates({ quiet: true }).catch(console.error);
+    }
+  };
+  window.addEventListener('focus', refreshFromDashboard);
+  document.addEventListener('visibilitychange', refreshFromDashboard);
+  setInterval(refreshFromDashboard, 10000);
 
-  initializeAccount();
-  loadTemplates().catch((error) => {
+  (async () => {
+    await initializeAccount();
+    await loadTemplates();
+  })().catch((error) => {
     console.error(error);
-    setSyncStatus('Could not load templates', 'warning');
     showToast('Could not load template storage.', true);
   });
 })();

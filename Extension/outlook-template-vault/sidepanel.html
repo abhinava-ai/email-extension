@@ -11,7 +11,6 @@
     <section id="listView" class="view">
       <header class="topbar">
         <div><p class="eyebrow">OUTLOOK</p><h1>Template Vault</h1></div>
-        <button id="newTemplateBtn" class="primary small" type="button">+ New</button>
       </header>
 
       <label class="search-wrap" for="searchInput">
@@ -24,18 +23,10 @@
 
         <div id="emptyState" class="empty-state" hidden>
           <div class="empty-icon">✉</div>
-          <h2>No templates yet</h2>
-          <p>Create your first reusable Outlook email template.</p>
-          <button id="emptyNewBtn" class="primary" type="button">Create template</button>
+          <h2>No templates available</h2>
+          <p>Add templates from the web dashboard. They will appear here automatically.</p>
         </div>
       </div>
-
-      <footer class="footer-actions">
-        <button id="exportBtn" class="text-btn" type="button" disabled>Export</button>
-        <span>•</span>
-        <button id="importBtn" class="text-btn" type="button" disabled>Import</button>
-        <input id="importFile" type="file" accept="application/json,.json" hidden>
-      </footer>
 
       <div class="bottom-panel">
         <section id="accountCard" class="account-card" aria-labelledby="accountTitle">
@@ -61,17 +52,10 @@
           <div id="signedInView" hidden>
             <div class="account-summary">
               <div class="account-identity"><span id="accountAvatar" class="account-avatar">A</span><div><strong id="accountName">Account</strong><span id="accountEmail"></span></div></div>
-              <span id="accountPlan" class="plan-badge">Free</span>
+              <button id="signOutBtn" class="text-btn account-link sign-out-inline" type="button">Sign out</button>
             </div>
-            <button id="signOutBtn" class="text-btn account-link" type="button">Sign out</button>
           </div>
         </section>
-
-        <div id="syncBanner" class="sync-banner" role="status">
-          <span id="syncDot" class="sync-dot"></span>
-          <span id="syncText">Loading templates…</span>
-          <button id="retrySyncBtn" class="text-btn sync-retry" type="button" hidden>Retry sync</button>
-        </div>
       </div>
     </section>
 

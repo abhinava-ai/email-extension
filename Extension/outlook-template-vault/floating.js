@@ -4,7 +4,7 @@
   let bubble;
   let frame;
   let minimized = false;
-  let geometry = { left: 8, top: 60, width: 400, height: 680 };
+  let geometry = { left: 8, top: 60, width: 310, height: 680 };
 
   async function runtime(message) {
     const response = await chrome.runtime.sendMessage(message);
@@ -49,12 +49,13 @@
     if (host) return;
     host = document.createElement('div');
     host.id = 'mail-template-vault-window';
+    host.hidden = true;
     host.style.cssText = 'position:fixed;inset:0;z-index:2147482999;pointer-events:none;';
     const shadow = host.attachShadow({ mode: 'closed' });
     shadow.innerHTML = `
       <style>
         *{box-sizing:border-box}[hidden]{display:none!important}
-        .window{position:fixed;left:calc(100vw - 430px);top:72px;width:400px;height:min(680px,calc(100vh - 100px));min-width:310px;min-height:260px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);display:flex;flex-direction:column;overflow:hidden;resize:both;border:1px solid #cdd8d2;border-radius:15px;background:#fff;box-shadow:0 22px 60px rgba(15,35,29,.24);pointer-events:auto}
+        .window{position:fixed;left:calc(100vw - 340px);top:72px;width:310px;height:min(680px,calc(100vh - 100px));min-width:310px;min-height:260px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);display:flex;flex-direction:column;overflow:hidden;resize:both;border:1px solid #cdd8d2;border-radius:15px;background:#fff;box-shadow:0 22px 60px rgba(15,35,29,.24);pointer-events:auto}
         .bar{height:42px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 13px;color:#fff;background:#173b32;cursor:move;user-select:none}
         .title{flex:1;font:700 13px system-ui}
         .bar button{width:28px;height:28px;border:0;border-radius:7px;color:#fff;background:rgba(255,255,255,.12);font:700 16px system-ui;cursor:pointer}
@@ -109,7 +110,7 @@
       geometry = {
         left: clamp(Number(state.left) || 8, 8, innerWidth - 318),
         top: clamp(Number(state.top) || 60, 8, innerHeight - 268),
-        width: clamp(Number(state.width) || 400, 310, innerWidth - 16),
+        width: 310,
         height: clamp(Number(state.height) || 680, 260, innerHeight - 16)
       };
       minimized = Boolean(state.minimized);
@@ -122,8 +123,9 @@
   }
 
   async function toggle() {
+    const existed = Boolean(host);
     await create();
-    host.hidden = !host.hidden;
+    host.hidden = existed ? !host.hidden : false;
     if (!host.hidden) applyMinimizedState();
   }
 

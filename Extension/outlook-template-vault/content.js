@@ -56,14 +56,14 @@
     assistantShadow.innerHTML = `
       <style>
         *{box-sizing:border-box}[hidden]{display:none!important}button,input,textarea{font:inherit}button{cursor:pointer}
-        .trigger{position:fixed;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid #d7ddd9;border-radius:11px;color:#fff;background:#173b32;box-shadow:0 6px 20px rgba(15,35,29,.22);pointer-events:auto;font:800 13px/1 system-ui,sans-serif}
+        .trigger{position:fixed;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid #d7ddd9;border-radius:11px;color:#fff;background:#173b32;box-shadow:0 6px 20px rgba(15,35,29,.22);pointer-events:auto;font:800 13px/1 system-ui,sans-serif}.trigger svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
         .trigger:hover{background:#245648}.trigger:focus-visible,.panel button:focus-visible,.panel input:focus-visible{outline:2px solid #28745e;outline-offset:2px}
         .panel{position:fixed;width:min(330px,calc(100vw - 20px));max-height:min(470px,calc(100vh - 20px));overflow:auto;padding:12px;color:#17221f;background:#fff;border:1px solid #dce3dd;border-radius:14px;box-shadow:0 22px 55px rgba(15,35,29,.2);pointer-events:auto;font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
         .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.brand{font-weight:800}.close{width:28px;height:28px;border:0;border-radius:8px;color:#607069;background:#f0f3f1}
         .body{padding-top:11px}.search{width:100%;height:36px;padding:0 10px;border:1px solid #dce3dd;border-radius:9px;outline:0}.search:focus{border-color:#477c6c}.list{display:grid;gap:6px;margin-top:9px}.template{padding:9px 10px;text-align:left;border:1px solid #e1e6e2;border-radius:9px;color:#17221f;background:#fff}.template:hover{border-color:#6c9286;background:#f7faf8}.template strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.template span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:#6d7874;font-size:10px}
         .empty{margin:0 0 10px;color:#6d7874;font-size:11px}.status{padding:16px 4px;text-align:center;color:#6d7874;font-size:11px}.error{padding:9px;margin-top:9px;color:#8d2e2e;background:#fff1ef;border-radius:8px;font-size:11px}
       </style>
-      <button class="trigger" type="button" title="Open Mail Template Vault" aria-label="Open Mail Template Vault" hidden>MT</button>
+      <button class="trigger" type="button" title="Open Mail Template Vault" aria-label="Open Mail Template Vault" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg></button>
       <section class="panel" role="dialog" aria-label="Mail Template Vault assistant" hidden>
         <div class="head"><span class="brand">Mail Template Vault</span><button class="close" type="button" aria-label="Close">×</button></div>
         <div class="body"></div>
@@ -122,11 +122,9 @@
     const body = assistantElements().body;
     body.innerHTML = '<div class="status">Loading templates…</div>';
     try {
-      if (!assistantTemplates.length) {
-        const response = await chrome.runtime.sendMessage({ type: 'ETM_CONTEXT_TEMPLATES' });
-        if (!response?.ok) throw new Error(response?.error || 'Could not load templates.');
-        assistantTemplates = Array.isArray(response.result?.templates) ? response.result.templates : [];
-      }
+      const response = await chrome.runtime.sendMessage({ type: 'ETM_CONTEXT_TEMPLATES' });
+      if (!response?.ok) throw new Error(response?.error || 'Could not load templates.');
+      assistantTemplates = Array.isArray(response.result?.templates) ? response.result.templates : [];
       renderTemplateTab(query);
     } catch (error) {
       body.innerHTML = '';
@@ -263,14 +261,13 @@
         activeSelection.removeAllRanges();
         activeSelection.addRange(range);
       }
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertFromPaste',
+        data: null
+      }));
     }
-
-    element.dispatchEvent(new InputEvent('input', {
-      bubbles: true,
-      composed: true,
-      inputType: 'insertFromPaste',
-      data: null
-    }));
 
     rememberSelection();
   }

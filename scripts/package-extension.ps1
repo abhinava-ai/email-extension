@@ -12,7 +12,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $repositoryRoot 'Extension\outlook-template-vault'
 $release = Join-Path $repositoryRoot 'release'
 $stage = Join-Path $env:TEMP ('mtv-extension-' + [guid]::NewGuid().ToString('N'))
-$destination = Join-Path $release 'mail-template-vault-extension-v1.2.0.zip'
+$destination = Join-Path $release 'mail-template-vault-extension-v1.2.4.zip'
 New-Item -ItemType Directory -Force -Path $stage, $release | Out-Null
 try {
   $excluded = @('node_modules', 'tests', 'scripts', 'src', 'package.json', 'package-lock.json', 'README.md')

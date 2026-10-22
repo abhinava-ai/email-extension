@@ -38,6 +38,8 @@ h2 { font-size: 16px; margin: 10px 0 4px; }
 .account-copy { margin: 7px 0 10px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .account-actions { display: flex; align-items: center; gap: 7px; }
 .account-link { font-size: 11px; font-weight: 700; }
+.sign-out-inline { flex: 0 0 auto; padding: 6px 8px; color: var(--muted); background: var(--surface-2); border-radius: 7px; }
+.sign-out-inline:hover { color: var(--text); background: #e7eaed; }
 .plan-badge { padding: 4px 8px; color: #3e5622; background: #eaf4d8; border-radius: 99px; font-size: 9px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
 .plan-badge.pro { color: #fff; background: #22252a; }
 .account-identity { min-width: 0; display: flex; align-items: center; gap: 9px; }
@@ -60,21 +62,17 @@ h2 { font-size: 16px; margin: 10px 0 4px; }
 .search-wrap:focus-within { border-color: #9da3aa; box-shadow: 0 0 0 3px rgba(0, 0, 0, .04); }
 .search-wrap input { width: 100%; height: 40px; border: 0; outline: 0; background: transparent; color: var(--text); }
 .search-icon { font-size: 18px; color: var(--muted); line-height: 1; }
-.template-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 3px; }
-.template-list { display: grid; gap: 8px; }
-.template-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; transition: border-color .15s, box-shadow .15s, transform .15s; }
-.template-card:hover { border-color: #bfc4ca; box-shadow: var(--shadow); transform: translateY(-1px); }
-.template-insert { border: 0; background: transparent; padding: 0; text-align: left; min-width: 0; color: inherit; }
+.template-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 8px 2px 1px; }
+.template-list { display: grid; gap: 8px; width: 100%; min-width: 0; }
+.template-card { position: relative; width: 100%; min-width: 0; display: block; padding: 11px 12px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.template-card:hover { border-color: #6c9286; background: #f7faf8; }
+.template-card:focus-within { border-color: #6c9286; box-shadow: 0 0 0 3px rgba(36,86,72,.1); }
+.template-insert { width: 100%; min-width: 0; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; cursor: pointer; }
 .template-name { display: block; font-weight: 750; font-size: 13px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .template-preview { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-actions { display: flex; gap: 3px; }
-.card-actions button { width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 15px; }
-.card-actions button:hover { background: var(--surface-2); color: var(--text); }
-.card-actions .delete:hover { color: var(--danger); }
 .empty-state { text-align: center; padding: 48px 18px 36px; color: var(--muted); }
 .empty-state p { font-size: 12px; line-height: 1.55; margin: 0 0 16px; }
 .empty-icon { width: 44px; height: 44px; display: grid; place-items: center; margin: 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); font-size: 20px; }
-.footer-actions { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 7px; margin: 9px 0 7px; color: #a0a5aa; font-size: 11px; }
 .bottom-panel { flex: 0 0 auto; display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); background: var(--bg); }
 .text-btn { border: 0; background: transparent; color: var(--muted); padding: 5px; }
 .text-btn:hover { color: var(--text); }

@@ -16,11 +16,20 @@ create table if not exists sessions (
   token_hash char(64) not null unique,
   expires_at timestamp(3) not null,
   last_seen_at timestamp(3) not null default current_timestamp(3),
+  client enum('web','extension') not null default 'web',
+  ip_address varchar(45),
   user_agent varchar(500),
+  logged_out_at timestamp(3) null,
+  revoked_at timestamp(3) null,
   created_at timestamp(3) not null default current_timestamp(3),
   constraint sessions_user_fk foreign key (user_id) references users(id) on delete cascade,
   index sessions_user_idx (user_id), index sessions_expiry_idx (expires_at)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+
+alter table sessions add column if not exists client enum('web','extension') not null default 'web' after last_seen_at;
+alter table sessions add column if not exists ip_address varchar(45) null after client;
+alter table sessions add column if not exists logged_out_at timestamp(3) null after user_agent;
+alter table sessions add column if not exists revoked_at timestamp(3) null after logged_out_at;
 
 create table if not exists templates (
   id varchar(100) primary key,

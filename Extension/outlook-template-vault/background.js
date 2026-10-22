@@ -157,7 +157,15 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id || !tab.url) return;
   try {
     if (!OUTLOOK_ORIGINS.has(new URL(tab.url).origin)) return;
-    await chrome.tabs.sendMessage(tab.id, { type: 'ETM_TOGGLE_VAULT' });
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'ETM_TOGGLE_VAULT' });
+    } catch (_) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['sanitizer.js', 'content.js', 'floating.js']
+      });
+      await chrome.tabs.sendMessage(tab.id, { type: 'ETM_TOGGLE_VAULT' });
+    }
   } catch (error) { console.warn('Could not toggle template vault:', error); }
 });
 

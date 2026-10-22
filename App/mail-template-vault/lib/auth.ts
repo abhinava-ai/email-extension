@@ -8,7 +8,7 @@ import { db, rows } from "@/lib/db";
 export const SESSION_COOKIE = "mtv_session";
 const SESSION_DAYS = 30;
 export type AuthUser = { id: string; email: string; displayName: string; role: "admin" | "member"; mustChangePassword: boolean };
-type UserRow = RowDataPacket & { id:string; email:string; display_name:string; role:"admin"|"member"; must_change_password:number };
+type UserRow = RowDataPacket & { id:string; email:string; display_name:string; role:"admin"|"member"; must_change_password:number; session_id:string };
 const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function verifyPassword(password: string, hash: string) {
@@ -18,24 +18,25 @@ export async function verifyPassword(password: string, hash: string) {
 }
 export async function hashPassword(password: string) { return bcrypt.hash(password, 12); }
 
-export async function createSession(userId: string, userAgent = "") {
+export async function createSession(userId: string, userAgent = "", client: "web"|"extension" = "web", ipAddress = "") {
   const token = randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000);
-  await db.execute("insert into sessions (id,user_id,token_hash,expires_at,user_agent) values (?,?,?,?,?)",
-    [randomUUID(), userId, tokenHash(token), expires, userAgent.slice(0, 500)]);
+  await db.execute("insert into sessions (id,user_id,token_hash,expires_at,user_agent,client,ip_address) values (?,?,?,?,?,?,?)",
+    [randomUUID(), userId, tokenHash(token), expires, userAgent.slice(0, 500), client, ipAddress.slice(0, 45)]);
   return { token, expires };
 }
 
 export async function revokeSession(token: string | null) {
-  if (token) await db.execute("delete from sessions where token_hash=?", [tokenHash(token)]);
+  if (token) await db.execute("update sessions set logged_out_at=coalesce(logged_out_at,now(3)) where token_hash=?", [tokenHash(token)]);
 }
 
 async function userForToken(token: string | null): Promise<AuthUser | null> {
   if (!token || token.length < 32) return null;
-  const result = await rows<UserRow[]>(`select u.id,u.email,u.display_name,u.role,u.must_change_password
+  const result = await rows<UserRow[]>(`select u.id,u.email,u.display_name,u.role,u.must_change_password,s.id session_id
     from sessions s join users u on u.id=s.user_id
-    where s.token_hash=? and s.expires_at>now(3) and u.active=1 limit 1`, [tokenHash(token)]);
+    where s.token_hash=? and s.expires_at>now(3) and s.logged_out_at is null and s.revoked_at is null and u.active=1 limit 1`, [tokenHash(token)]);
   const row = result[0];
+  if (row) await db.execute("update sessions set last_seen_at=now(3) where id=?",[row.session_id]);
   return row ? { id:row.id, email:row.email, displayName:row.display_name, role:row.role, mustChangePassword:Boolean(row.must_change_password) } : null;
 }
 

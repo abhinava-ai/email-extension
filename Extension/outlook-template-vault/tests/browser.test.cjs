@@ -259,6 +259,35 @@ test('Outlook insertion rejects ambiguous bodies and uses the selected body and 
   assert.equal(text, 'AInsertedB');
 });
 
+test('Outlook insertion remains in the native undo history', async (t) => {
+  const { page } = await setup(t);
+  await page.goto(`${base}/sidepanel.html`);
+  await page.evaluate(() => {
+    document.body.innerHTML = '<div id="compose" contenteditable="true" role="textbox" aria-multiline="true" style="width:500px;height:180px">Before</div>';
+  });
+  await page.addScriptTag({ url: `${base}/content.js` });
+  await page.locator('#compose').click();
+  await page.keyboard.press('End');
+  const result = await page.evaluate(() => new Promise((resolve) => window.contentMessageListener(
+    { type: 'ETM_INSERT_TEMPLATE', html: '<strong> inserted</strong>' },
+    { id: 'test-extension' },
+    resolve
+  )));
+  assert.equal(result.ok, true);
+  assert.match(await page.locator('#compose').innerHTML(), /inserted/);
+  await page.locator('#compose').press('Control+z');
+  assert.equal(await page.locator('#compose').innerText(), 'Before');
+});
+
+test('the complete popup template card is clickable for insertion', async (t) => {
+  const { page } = await setup(t, { seed: [template('card', '<p>Card content</p>')] });
+  await page.goto(`${base}/sidepanel.html?floating=1`);
+  const card = page.locator('.template-card');
+  await expect(card).toBeVisible();
+  await card.click({ position: { x: 4, y: 20 } });
+  await expect(page.locator('#toast')).toContainText('Inserted: card');
+});
+
 test('contextual assistant appears only for compose editors and inserts a selected template without sending', async (t) => {
   const { page } = await setup(t);
   await page.goto(`${base}/sidepanel.html`);
