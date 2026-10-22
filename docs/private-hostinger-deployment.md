@@ -8,8 +8,8 @@ Configure the values documented in `.env.example`. Use `DB_HOST=127.0.0.1`; neve
 
 1. Create the MySQL database and user in hPanel.
 2. Run `npm run db:migrate`.
-3. Temporarily set unique 12+ character `SANDEEP_TEMP_PASSWORD` and `ANKITA_TEMP_PASSWORD` values.
-4. Run `npm run db:bootstrap` once, then remove both temporary variables.
+3. Temporarily set one 12+ character `ADMIN_TEMP_PASSWORD` value for both initial administrators.
+4. Run `npm run db:bootstrap` once, then remove the temporary variable.
 5. Sign in as each administrator and change the temporary password.
 6. Set the extension’s public API and portal URLs to the HTTPS production origin.
 7. Reload/package the extension and complete the smoke test.
