@@ -1,4 +1,6 @@
 (() => {
+  if (globalThis.__MAIL_TEMPLATE_VAULT_CONTENT_INITIALIZED__) return;
+  globalThis.__MAIL_TEMPLATE_VAULT_CONTENT_INITIALIZED__ = true;
   let lastEditable = null;
   let lastRange = null;
   let assistantHost = null;
@@ -244,30 +246,7 @@
       inserted = false;
     }
 
-    if (!inserted) {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        placeCaretAtEnd(element);
-      }
-      const activeSelection = window.getSelection();
-      const range = activeSelection.getRangeAt(0);
-      range.deleteContents();
-      const fragment = range.createContextualFragment(cleanHtml);
-      const lastNode = fragment.lastChild;
-      range.insertNode(fragment);
-      if (lastNode) {
-        range.setStartAfter(lastNode);
-        range.collapse(true);
-        activeSelection.removeAllRanges();
-        activeSelection.addRange(range);
-      }
-      element.dispatchEvent(new InputEvent('input', {
-        bubbles: true,
-        composed: true,
-        inputType: 'insertFromPaste',
-        data: null
-      }));
-    }
+    if (!inserted) throw new Error('Outlook could not create a native undo step. Click inside the message body and try again.');
 
     rememberSelection();
   }

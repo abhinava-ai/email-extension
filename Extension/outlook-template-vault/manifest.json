@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mail Template Vault for Outlook",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Save, sync, clean, manage, and insert reusable HTML email templates into Outlook on the web.",
   "minimum_chrome_version": "114",
   "permissions": [

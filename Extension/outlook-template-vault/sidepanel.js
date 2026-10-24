@@ -30,7 +30,8 @@
     accountName: document.getElementById('accountName'),
     accountEmail: document.getElementById('accountEmail'),
     accountPlan: document.getElementById('accountPlan'),
-    signOutBtn: document.getElementById('signOutBtn')
+    signOutBtn: document.getElementById('signOutBtn'),
+    syncBtn: document.getElementById('syncBtn')
   };
 
   function escapeHtml(text) {
@@ -73,6 +74,7 @@
     const user = authState?.user || null;
     el.signedOutView.hidden = Boolean(user);
     el.signedInView.hidden = !user;
+    el.syncBtn.hidden = !user;
     if (!user) return;
     const name = String(user.displayName || '').trim() || 'Mail Template Vault user';
     const email = user.email || '';
@@ -93,7 +95,7 @@
       renderAccount(await ExtensionAuth.initialize());
     } catch (error) {
       console.error('Could not initialize account:', error);
-      showToast('Account sign-in is temporarily unavailable. Local templates still work.', true);
+      showToast('Account sign-in is temporarily unavailable.', true);
     }
   }
 
@@ -121,9 +123,8 @@
       const card = document.createElement('article');
       card.className = 'template-card';
       card.dataset.insert = template.id;
-      card.title = `Insert ${template.name} into Outlook`;
       card.innerHTML = `
-        <button class="template-insert" type="button" title="Insert into Outlook">
+        <button class="template-insert" type="button" aria-label="Insert ${escapeHtml(template.name)} into Outlook">
           <span class="template-name">${escapeHtml(template.name)}</span>
           <span class="template-preview">${escapeHtml(plainPreview(template.html) || 'Empty template')}</span>
         </button>
@@ -132,22 +133,33 @@
     }
   }
 
+  function templateFingerprint(templates) {
+    return JSON.stringify(templates.map(({ id, name, html, serverVersion, updatedAt }) =>
+      [id, name, html, serverVersion || 0, updatedAt || 0]));
+  }
+
   async function loadTemplates({ quiet = false } = {}) {
     if (state.refreshing) { state.refreshAgain = true; return; }
     state.refreshing = true;
+    el.syncBtn.disabled = true;
+    el.syncBtn.textContent = 'Syncing…';
     try {
       const result = await TemplateStorage.load();
       if (result.entitlements) state.entitlements = result.entitlements;
       const loadedTemplates = Array.isArray(result.templates) ? result.templates : [];
-      state.templates = loadedTemplates.map((template) => {
+      const nextTemplates = loadedTemplates.map((template) => {
         return { ...template, html: TemplateSanitizer.sanitize(template.html) };
       });
-
-      render();
+      if (templateFingerprint(nextTemplates) !== templateFingerprint(state.templates)) {
+        state.templates = nextTemplates;
+        render();
+      }
       renderAccount(globalThis.ExtensionAuth?.getState());
       if (!result.remote && result.error && !quiet) showToast(result.error, true);
     } finally {
       state.refreshing = false;
+      el.syncBtn.disabled = false;
+      el.syncBtn.textContent = 'Sync';
       if (state.refreshAgain) {
         state.refreshAgain = false;
         loadTemplates({ quiet: true }).catch(console.error);
@@ -209,6 +221,7 @@
     el.signOutBtn.disabled = true;
     try {
       await ExtensionAuth.signOut();
+      await chrome.runtime.sendMessage({ type: 'ETM_CLEAR_TEMPLATE_DATA' });
       state.templates = [];
       render();
       showToast('Signed out');
@@ -220,6 +233,14 @@
   });
 
   el.searchInput.addEventListener('input', render);
+  el.syncBtn.addEventListener('click', async () => {
+    try {
+      await loadTemplates({ quiet: false });
+      showToast('Templates synced');
+    } catch (error) {
+      showToast(error?.message || 'Could not sync templates.', true);
+    }
+  });
 
   el.templateList.addEventListener('click', async (event) => {
     const insertTarget = event.target.closest('[data-insert]');
@@ -229,30 +250,14 @@
     }
   });
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    const localChanged = areaName === 'local' && changes[TemplateStorage.LOCAL_KEY];
-    const syncChanged = areaName === 'sync' && changes[TemplateStorage.MANIFEST_KEY];
-    if (localChanged || syncChanged) loadTemplates({ quiet: true }).catch(console.error);
-  });
-
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === 'ETM_TEMPLATES_UPDATED') {
-      loadTemplates({ quiet: true }).catch(console.error);
-    }
-  });
-
-  const refreshFromDashboard = () => {
-    if (document.visibilityState === 'visible' && ExtensionAuth.getState()?.user) {
-      loadTemplates({ quiet: true }).catch(console.error);
-    }
-  };
-  window.addEventListener('focus', refreshFromDashboard);
-  document.addEventListener('visibilitychange', refreshFromDashboard);
-  setInterval(refreshFromDashboard, 10000);
-
   (async () => {
     await initializeAccount();
-    await loadTemplates();
+    try { await loadTemplates(); }
+    catch (error) {
+      state.templates = [];
+      render();
+      if (ExtensionAuth.getState()?.user) throw error;
+    }
   })().catch((error) => {
     console.error(error);
     showToast('Could not load template storage.', true);

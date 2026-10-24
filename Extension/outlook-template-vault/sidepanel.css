@@ -23,6 +23,7 @@ button:focus-visible { outline: 2px solid #0563c1; outline-offset: 2px; }
 .app-shell { height: 100vh; overflow: hidden; }
 .view { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 18px 16px 14px; overflow: hidden; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sync-button { flex: 0 0 auto; min-width: 62px; }
 h1 { font-size: 20px; line-height: 1.2; margin: 2px 0 0; letter-spacing: -.02em; }
 h2 { font-size: 16px; margin: 10px 0 4px; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .13em; }

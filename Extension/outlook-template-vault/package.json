@@ -1,6 +1,6 @@
 {
   "name": "outlook-template-vault",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "private": true,
   "scripts": {
     "vendor": "node scripts/vendor-jodit.cjs",

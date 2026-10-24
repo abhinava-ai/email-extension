@@ -143,7 +143,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .divider { height: 1px; margin: 20px 0; background: var(--line); }
 .device-card { padding: 0; overflow: hidden; }
 .device-table { min-width: 980px; }
-.device-row { display: grid; grid-template-columns: 1.25fr 1.45fr 1fr 1.4fr .7fr 44px; gap: 18px; align-items: center; min-height: 82px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: .8rem; }
+.device-row { display: grid; grid-template-columns: 1.25fr 1.45fr 1fr 1.4fr .7fr 88px; gap: 18px; align-items: center; min-height: 82px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: .8rem; }
+.device-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.icon-button.danger { color: #9f2f2f; }
 .device-row:last-child { border-bottom: 0; }
 .device-head { min-height: 48px; color: var(--muted); background: #f7f9f6; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 .device-user strong,.device-user span,.device-user small,.device-detail strong,.device-detail span,.device-dates span { display: block; }

@@ -1,4 +1,6 @@
 (() => {
+  if (globalThis.__MAIL_TEMPLATE_VAULT_FLOATING_INITIALIZED__) return;
+  globalThis.__MAIL_TEMPLATE_VAULT_FLOATING_INITIALIZED__ = true;
   let host;
   let box;
   let bubble;
@@ -30,6 +32,14 @@
     box.hidden = minimized;
     bubble.hidden = !minimized;
     if (!minimized) frame.focus();
+  }
+
+  function keepInsideViewport() {
+    if (!box || box.hidden) return;
+    box.style.left = `${clamp(box.offsetLeft, 8, innerWidth - box.offsetWidth - 8)}px`;
+    box.style.top = `${clamp(box.offsetTop, 8, innerHeight - box.offsetHeight - 8)}px`;
+    if (box.offsetHeight > innerHeight - 16) box.style.height = `${Math.max(260, innerHeight - 16)}px`;
+    save();
   }
 
   function minimize() {
@@ -103,6 +113,7 @@
     });
     bar.addEventListener('pointerup', () => { drag = null; save(); });
     box.addEventListener('mouseup', save);
+    window.addEventListener('resize', keepInsideViewport);
     document.documentElement.appendChild(host);
 
     const state = await runtime({ type: 'ETM_FLOAT_STATE_GET' });

@@ -46,58 +46,42 @@ async function api(path, options = {}) {
   return body;
 }
 
-async function cache(operation, payload) {
-  return TemplateStorage.dispatch(operation, payload, { allowSync: false, templateLimit: null, serverAuthoritative: true });
-}
-
 async function fetchRemoteTemplates() {
   const body = await api('/api/templates');
   return Array.isArray(body.templates) ? body.templates : [];
 }
 
-async function refreshCache() {
-  const local = await cache('load');
-  const migration = (await chrome.storage.local.get(MIGRATION_KEY))[MIGRATION_KEY];
-  if (!migration && local.templates.length) {
-    await api('/api/templates/import', { method: 'POST', body: JSON.stringify({ templates: local.templates }) });
-    await chrome.storage.local.set({ [MIGRATION_KEY]: true });
-  }
-  const templates = await fetchRemoteTemplates();
-  await cache('replace', { templates });
-  const updated = await cache('load');
-  return { ...updated, templates: updated.templates, remote: true, synced: true, entitlements: PRIVATE_ACCESS };
+async function clearLegacyTemplateData() {
+  await chrome.storage.local.remove([TemplateStorage.LOCAL_KEY, MIGRATION_KEY]);
+  const synced = await chrome.storage.sync.get(null);
+  const keys = Object.keys(synced).filter((key) =>
+    key === TemplateStorage.MANIFEST_KEY || key.startsWith('etm_chunk_v1_'));
+  if (keys.length) await chrome.storage.sync.remove(keys);
 }
 
 async function remoteStorage(operation, payload = {}) {
   if (operation === 'load' || operation === 'reconcile') {
-    try { return await refreshCache(); }
-    catch (error) {
-      const local = await cache('load');
-      return { ...local, remote: false, synced: false, error: error.message, entitlements: PRIVATE_ACCESS };
-    }
+    const templates = await fetchRemoteTemplates();
+    return { templates, remote: true, synced: true, entitlements: PRIVATE_ACCESS };
   }
-  const local = await cache('load');
   if (operation === 'upsert') {
-    const existing = local.templates.find((item) => item.id === payload.template.id);
-    const creating = !existing?.serverVersion;
+    const creating = !payload.template.serverVersion;
     const path = creating ? '/api/templates' : `/api/templates/${encodeURIComponent(payload.template.id)}`;
     const body = await api(path, {
       method: creating ? 'POST' : 'PUT',
-      body: JSON.stringify({ ...payload.template, expectedVersion: existing?.serverVersion })
+      body: JSON.stringify({ ...payload.template, expectedVersion: payload.template.serverVersion })
     });
-    const result = await cache('upsert', { template: body.template, expectedRevision: payload.expectedRevision });
-    return { ...result, synced: true, remote: true, entitlements: PRIVATE_ACCESS };
+    return { template: body.template, templates: await fetchRemoteTemplates(), synced: true, remote: true, entitlements: PRIVATE_ACCESS };
   }
   if (operation === 'remove') {
-    const existing = local.templates.find((item) => item.id === payload.id);
+    const existing = (await fetchRemoteTemplates()).find((item) => item.id === payload.id);
     if (!existing?.serverVersion) throw new Error('Reload templates before deleting this item.');
     await api(`/api/templates/${encodeURIComponent(payload.id)}?version=${existing.serverVersion}`, { method: 'DELETE' });
-    const result = await cache('remove', payload);
-    return { ...result, synced: true, remote: true, entitlements: PRIVATE_ACCESS };
+    return { templates: await fetchRemoteTemplates(), synced: true, remote: true, entitlements: PRIVATE_ACCESS };
   }
   if (operation === 'replace') {
     await api('/api/templates/import', { method: 'POST', body: JSON.stringify({ templates: payload.templates }) });
-    return refreshCache();
+    return remoteStorage('load');
   }
   throw new Error('Unknown storage operation.');
 }
@@ -128,6 +112,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'ETM_ENTITLEMENTS') {
     sendResponse({ ok: true, result: PRIVATE_ACCESS });
     return;
+  }
+  if (message?.type === 'ETM_CLEAR_TEMPLATE_DATA' && sender.id === chrome.runtime.id) {
+    clearLegacyTemplateData().then(
+      () => sendResponse({ ok: true }),
+      (error) => sendResponse({ ok: false, error: error.message })
+    );
+    return true;
   }
   if (message?.type === 'ETM_CONTEXT_TEMPLATES') {
     if (!trustedOutlook(sender)) {
@@ -175,6 +166,8 @@ async function configureExtension() {
     await chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
     await chrome.storage.sync.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
   } catch (error) { console.warn('Could not restrict storage:', error); }
+  try { await clearLegacyTemplateData(); }
+  catch (error) { console.warn('Could not clear legacy template cache:', error); }
 }
 
 chrome.runtime.onInstalled.addListener(configureExtension);
