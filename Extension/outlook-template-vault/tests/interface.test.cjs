@@ -41,7 +41,7 @@ function loadWorker(local = {}) {
   };
   vm.runInContext(fs.readFileSync(path.join(root, 'background.js'), 'utf8'), context);
   const send = (message, sender) => new Promise((resolve) => onMessage(message, sender, resolve));
-  return { send, calls, click: (tab) => onClicked(tab), areas: fixture.areas };
+  return { send, calls, click: (tab) => onClicked(tab), areas: fixture.areas, chrome: context.chrome };
 }
 
 const page = { id: 'vault', url: PAGE };
@@ -352,6 +352,162 @@ test('the toolbar in Inline mode opens the picker for an open email', async (t) 
   await page.evaluate(() => window.contentMessageListener({ type: 'ETM_TOGGLE_INLINE' }, { id: 'test-extension' }, () => {}));
   await expect(shadow('.panel')).toBeVisible();
   await expect(shadow('.template')).toHaveCount(2);
+});
+
+async function signInPage(t, loginResponse) {
+  const context = await browser.newContext({ viewport: { width: 380, height: 720 } });
+  t.after(() => context.close());
+  await context.addInitScript(({ loginResponse, templates }) => {
+    const store = {};
+    window.store = store;
+    window.loginCalls = 0;
+    window.fetch = async (url, options = {}) => {
+      if (String(url).endsWith('/api/auth/login')) {
+        window.loginCalls += 1;
+        window.loginBody = JSON.parse(options.body);
+        return new Response(JSON.stringify(loginResponse.body), { status: loginResponse.status, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (String(url).endsWith('/api/auth/logout')) return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return store.mtv_api_auth_v1
+        ? new Response(JSON.stringify({ user: loginResponse.body.user }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+        : new Response(JSON.stringify({ error: 'Authentication required.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    };
+    window.chrome = {
+      runtime: {
+        id: 'test-extension',
+        getURL: (name) => new URL(name, location.href).href,
+        sendMessage: async (message) => {
+          if (message.type === 'ETM_STORAGE') return store.mtv_api_auth_v1 ? { ok: true, result: { templates, remote: true } } : { ok: false, error: 'Sign in to access shared templates.' };
+          if (message.type === 'ETM_PREFERENCES_GET') return { ok: true, result: { interfaceMode: 'popover', inlineButton: true, closeAfterInsert: false, sortOrder: 'name' } };
+          return { ok: true };
+        },
+        onMessage: { addListener() {} }
+      },
+      storage: {
+        local: {
+          get: async (key) => (key in store ? { [key]: store[key] } : {}),
+          set: async (value) => { Object.assign(store, value); },
+          remove: async (key) => { delete store[key]; }
+        },
+        onChanged: { addListener() {} }
+      },
+      tabs: { query: async () => [{ id: 1 }], create() {}, sendMessage: async () => ({ ok: true }) }
+    };
+  }, { loginResponse, templates: TEMPLATES });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`${base}/sidepanel.html`);
+  await page.locator('#showSignInBtn').click();
+  await page.locator('#authEmail').fill('person@example.com');
+  await page.locator('#authPassword').fill('fixture-value-1');
+  await page.locator('#authSubmitBtn').click();
+  return { page, errors };
+}
+
+test('signing in stores the session and shows the templates', async (t) => {
+  const { page, errors } = await signInPage(t, { status: 200, body: { token: 'fixture-token', user: { email: 'person@example.com', displayName: 'Person', mustChangePassword: false } } });
+  await expect(page.locator('.template-card')).toHaveCount(2);
+  await expect(page.locator('#signedOutView')).toBeHidden();
+  assert.equal(await page.evaluate(() => window.store.mtv_api_auth_v1.token), 'fixture-token');
+  assert.equal(await page.evaluate(() => window.loginBody.client), 'extension');
+  assert.deepEqual(errors, []);
+});
+
+test('a refused sign-in shows the reason and lets you try again', async (t) => {
+  const { page } = await signInPage(t, { status: 401, body: { error: 'Email or password is incorrect.' } });
+  await expect(page.locator('#authError')).toHaveText('Email or password is incorrect.');
+  await expect(page.locator('#authSubmitBtn')).toBeEnabled();
+  await expect(page.locator('#authForm')).toBeVisible();
+});
+
+test('a temporary password explains what to do and keeps the form open', async (t) => {
+  const { page } = await signInPage(t, { status: 200, body: { token: 'fixture-token', user: { email: 'person@example.com', displayName: 'Person', mustChangePassword: true } } });
+  await expect(page.locator('#authError')).toContainText('Change your temporary password');
+  await expect(page.locator('#authForm')).toBeVisible();
+  assert.equal(await page.evaluate(() => Boolean(window.store.mtv_api_auth_v1)), false);
+});
+
+test('a network failure with a saved session offers a retry, not a sign-in', async (t) => {
+  const context = await browser.newContext({ viewport: { width: 380, height: 720 } });
+  t.after(() => context.close());
+  await context.addInitScript(() => {
+    window.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    window.chrome = {
+      runtime: { id: 'x', getURL: (n) => n, sendMessage: async (m) => (m.type === 'ETM_STORAGE' ? { ok: false, error: 'The private API is unavailable.' } : { ok: false }), onMessage: { addListener() {} } },
+      storage: { local: { get: async () => ({ mtv_api_auth_v1: { token: 'saved' } }), set: async () => {}, remove: async () => { window.tokenRemoved = true; } }, onChanged: { addListener() {} } },
+      tabs: { query: async () => [{ id: 1 }], create() {}, sendMessage: async () => ({ ok: true }) }
+    };
+  });
+  const page = await context.newPage();
+  await page.goto(`${base}/sidepanel.html`);
+  await expect(page.locator('#errorState')).toBeVisible();
+  await expect(page.locator('#signedOutView')).toBeHidden();
+  assert.equal(await page.evaluate(() => Boolean(window.tokenRemoved)), false);
+});
+
+test('a session ended elsewhere clears the list and asks you to sign in', async (t) => {
+  const { page } = await open(t, 'sidepanel.html');
+  await expect(page.locator('.template-card')).toHaveCount(2);
+  await page.evaluate(() => {
+    window.fetch = async () => new Response(JSON.stringify({ error: 'Authentication required.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    chrome.runtime.sendMessage = async (m) => (m.type === 'ETM_STORAGE' ? { ok: false, error: 'Your session has ended. Sign in again to load your templates.' } : { ok: true });
+    document.getElementById('syncBtn').click();
+  });
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  await expect(page.locator('.template-card')).toHaveCount(0);
+});
+
+test('the picker drops saved templates once signed out, and its button survives a silent focus change', async (t) => {
+  const { page, shadow } = await compose(t);
+  await page.locator('#compose').click();
+  await shadow('.trigger').click();
+  await expect(shadow('.template')).toHaveCount(2);
+  await shadow('.search').press('Escape');
+  await page.evaluate(() => { chrome.runtime.sendMessage = async () => ({ ok: false, error: 'Your session has ended. Sign in again to load your templates.' }); });
+  await shadow('.trigger').click();
+  await expect(shadow('.sign-in')).toBeVisible();
+  await expect(shadow('.template')).toHaveCount(0);
+  await page.evaluate(() => {
+    const body = document.getElementById('compose');
+    body.replaceWith(body.cloneNode(true));
+  });
+  await expect(shadow('.trigger')).toBeHidden({ timeout: 2000 });
+  await page.evaluate(() => {
+    const swallow = (event) => event.stopImmediatePropagation();
+    window.addEventListener('focusin', swallow, true);
+    document.getElementById('compose').focus();
+    window.removeEventListener('focusin', swallow, true);
+  });
+  await expect(shadow('.trigger')).toBeVisible({ timeout: 2000 });
+});
+
+test('a signed-out inline picker offers a working way to sign in', async (t) => {
+  const { page, shadow } = await compose(t);
+  await page.evaluate(() => {
+    window.sentMessages = [];
+    chrome.runtime.sendMessage = async (message) => {
+      window.sentMessages.push(message.type);
+      return message.type === 'ETM_CONTEXT_TEMPLATES' ? { ok: false, error: 'Sign in to access shared templates.' } : { ok: true };
+    };
+  });
+  await page.locator('#compose').click();
+  await shadow('.trigger').click();
+  await expect(shadow('.error')).toHaveText('Sign in to access shared templates.');
+  await shadow('.sign-in').click();
+  assert.ok((await page.evaluate(() => window.sentMessages)).includes('ETM_OPEN_SIGN_IN'));
+  await expect(shadow('.panel')).toBeHidden();
+});
+
+test('only Outlook pages can ask to open the sign-in page', async () => {
+  const worker = loadWorker();
+  let created = null;
+  worker.chrome.tabs.create = async (value) => { created = value; return {}; };
+  assert.equal(worker.send({ type: 'ETM_OPEN_SIGN_IN' }, { id: 'other', tab: { url: OUTLOOK } }) instanceof Promise, true);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(created, null);
+  await worker.send({ type: 'ETM_OPEN_SIGN_IN' }, { id: 'vault', url: OUTLOOK, tab: { url: OUTLOOK } });
+  assert.equal(created.url, 'chrome-extension://vault/sidepanel.html?signin=1');
 });
 
 test('Settings shows the saved interface, saves changes and locks options that do not apply', async (t) => {

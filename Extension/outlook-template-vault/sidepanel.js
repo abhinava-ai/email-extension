@@ -2,6 +2,7 @@
   const WEEK = 7 * 86400000;
   const SORT_LABELS = { name: 'Name A–Z', recent: 'Recently updated' };
   const floating = new URLSearchParams(location.search).get('floating') === '1';
+  const openedForSignIn = new URLSearchParams(location.search).get('signin') === '1';
   const ICONS = {
     tile: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
     spark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.7 5.300 2.700 7.300 8 8-5.300.7-7.300 2.700-8 8-.7-5.300-2.700-7.300-8-8 5.300-.7 7.300-2.700 8-8z"/></svg>',
@@ -172,7 +173,7 @@
     const q = el.searchInput.value.trim();
     const filtering = Boolean(q) || state.recentOnly;
     const filtered = filteredTemplates();
-    const signedOut = !currentUser() && !state.templates.length;
+    const signedOut = !currentUser() && !state.templates.length && !globalThis.ExtensionAuth?.getState?.()?.unreachable;
     const loading = !state.loaded && !signedOut;
     const showTools = !signedOut;
 
@@ -234,6 +235,14 @@
       if (!result.remote && result.error && !quiet) showToast(result.error, true);
     } catch (error) {
       state.loaded = true;
+      if (/sign in/i.test(error?.message || '') && globalThis.ExtensionAuth) {
+        // The session is over, so nothing from it stays on screen.
+        state.templates = [];
+        state.loadFailed = false;
+        await ExtensionAuth.initialize().catch(() => {});
+        render();
+        throw error;
+      }
       state.loadFailed = true;
       el.errorMessage.textContent = error?.message || 'Check your connection and try again.';
       render();
@@ -383,6 +392,27 @@
     }
   }
 
+  function announceAuthChange() {
+    chrome.runtime.sendMessage({ type: 'ETM_AUTH_CHANGED' }).catch(() => {});
+  }
+
+  async function closeSignInTab() {
+    const tab = await chrome.tabs.getCurrent?.().catch(() => null);
+    if (tab?.id) chrome.tabs.remove(tab.id).catch(() => {});
+  }
+
+  // Another window signed in or out, or the session was removed from the dashboard.
+  async function refreshAfterAuthChange() {
+    if (!globalThis.ExtensionAuth) return;
+    await ExtensionAuth.initialize().catch(() => {});
+    state.loaded = false;
+    state.loadFailed = false;
+    if (!currentUser()) state.templates = [];
+    render();
+    if (currentUser()) loadTemplates({ quiet: true }).catch(console.error);
+    else { state.loaded = true; render(); }
+  }
+
   async function loadPreferences() {
     const preferences = await runtimeResult({ type: 'ETM_PREFERENCES_GET' });
     if (preferences) state.preferences = preferences;
@@ -418,6 +448,8 @@
       render();
       await loadTemplates({ quiet: true });
       showToast('Signed in');
+      announceAuthChange();
+      if (openedForSignIn) setTimeout(closeSignInTab, 1200);
     } catch (error) {
       el.authError.textContent = error?.message || 'Could not complete account authentication.';
       el.authError.hidden = false;
@@ -436,6 +468,7 @@
       el.searchInput.value = '';
       render();
       showToast('Signed out');
+      announceAuthChange();
     } catch (error) {
       showToast(error?.message || 'Could not sign out.', true);
     } finally {
@@ -541,6 +574,10 @@
   el.templateList.parentElement.addEventListener('scroll', closeMenus, { passive: true });
 
   chrome.runtime.onMessage?.addListener((message) => {
+    if (message?.type === 'ETM_AUTH_CHANGED') {
+      refreshAfterAuthChange().catch(console.error);
+      return;
+    }
     if (message?.type !== 'ETM_PREFERENCES_CHANGED' || !message.preferences) return;
     state.preferences = message.preferences;
     render();

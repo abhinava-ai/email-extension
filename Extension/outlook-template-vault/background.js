@@ -51,10 +51,22 @@ async function api(path, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) }
   });
+  if (response.status === 401) {
+    await chrome.storage.local.remove(AUTH_STORAGE_KEY);
+    broadcastAuthChange();
+    throw new Error('Your session has ended. Sign in again to load your templates.');
+  }
   const type = response.headers.get('content-type') || '';
   const body = type.includes('application/json') ? await response.json().catch(() => ({})) : await response.text();
   if (!response.ok) throw new Error(body?.error || 'The private API is unavailable.');
   return body;
+}
+
+async function broadcastAuthChange() {
+  const message = { type: 'ETM_AUTH_CHANGED' };
+  const tabs = await chrome.tabs.query({ url: [...OUTLOOK_ORIGINS].map((origin) => `${origin}/*`) }).catch(() => []);
+  await Promise.allSettled(tabs.map((tab) => chrome.tabs.sendMessage(tab.id, message)));
+  await chrome.runtime.sendMessage(message).catch(() => {});
 }
 
 async function fetchRemoteTemplates() {
@@ -166,6 +178,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     setPreferences(message.preferences).then(
       (result) => sendResponse({ ok: true, result }),
+      (error) => sendResponse({ ok: false, error: error.message })
+    );
+    return true;
+  }
+  if (message?.type === 'ETM_AUTH_CHANGED' && trustedExtensionPage(sender)) {
+    broadcastAuthChange().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  // Inline mode has no panel of its own, so sign-in opens the panel page in a tab.
+  if (message?.type === 'ETM_OPEN_SIGN_IN' && trustedOutlook(sender)) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel.html?signin=1') }).then(
+      () => sendResponse({ ok: true }),
       (error) => sendResponse({ ok: false, error: error.message })
     );
     return true;

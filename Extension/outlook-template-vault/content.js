@@ -83,7 +83,7 @@
     assistantShadow.innerHTML = `
       <style>
         *{box-sizing:border-box}[hidden]{display:none!important}button,input{font:inherit}button{cursor:pointer}
-        :host{font:13px/1.45 Inter,-apple-system,"Segoe UI",system-ui,sans-serif;color:#17181c}
+        .panel,.pill{font:13px/1.45 Inter,-apple-system,"Segoe UI",system-ui,sans-serif}.panel{color:#17181c}
         .trigger{position:fixed;width:36px;height:36px;padding:0;display:grid;place-items:center;border:0;border-radius:50%;color:#fff;background:#17181c;box-shadow:0 8px 20px rgba(10,18,32,.28);pointer-events:auto;transition:transform .15s ease,background .15s ease;animation:rise .16s ease}
         .trigger svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
         .trigger:hover{background:#2f80ed;transform:scale(1.06)}
@@ -99,6 +99,7 @@
         .template{width:100%;padding:11px 12px;text-align:left;color:#17181c;background:#fff;border:1px solid #e9ebef;border-radius:14px;transition:border-color .15s,box-shadow .15s}.template:hover,.template.active{border-color:#2f80ed;box-shadow:0 0 0 3px rgba(47,128,237,.1)}
         .template strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:620}.template span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:3px;color:#5b6472;font-size:11.5px}
         .empty,.status{margin:0;padding:18px 6px;text-align:center;color:#737b88;font-size:12px}.error{padding:10px 12px;color:#a32c2c;background:#fdeeee;border-radius:12px;font-size:12px}
+        .sign-in{height:38px;padding:0 14px;color:#fff;background:#17181c;border:0;border-radius:12px;font-weight:600;transition:background .15s}.sign-in:hover{background:#000}
         .pill{position:fixed;left:50%;bottom:26px;max-width:min(420px,calc(100vw - 32px));padding:11px 18px;color:#fff;background:#17181c;border-radius:999px;box-shadow:0 12px 28px rgba(10,18,32,.32);font-size:13px;transform:translateX(-50%);pointer-events:none}
         @media(prefers-reduced-motion:reduce){.trigger,.panel,.template,.search{transition:none;animation:none}}
       </style>
@@ -231,9 +232,13 @@
       templatesLoaded = true;
       renderTemplateList();
     } catch (error) {
-      if (templatesLoaded) return;
+      const message = friendlyError(error);
+      // Saved templates are only kept through a passing network problem, never once signed out.
+      if (templatesLoaded && !/sign in|password/i.test(message)) return;
+      templatesLoaded = false;
+      assistantTemplates = [];
       count.textContent = '';
-      showAssistantError(friendlyError(error));
+      showAssistantError(message);
     }
   }
 
@@ -311,6 +316,15 @@
     const { list } = assistantElements();
     const error = document.createElement('div'); error.className = 'error'; error.textContent = text || 'Something went wrong.';
     list.innerHTML = ''; list.appendChild(error);
+    if (/sign in/i.test(text || '')) {
+      const signIn = document.createElement('button');
+      signIn.type = 'button'; signIn.className = 'sign-in'; signIn.textContent = 'Sign in';
+      signIn.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'ETM_OPEN_SIGN_IN' }).catch(() => {});
+        setAssistantOpen(false);
+      });
+      list.appendChild(signIn);
+    }
   }
 
   function toggleInlinePicker() {
@@ -343,6 +357,17 @@
   document.addEventListener('pointerdown', (event) => {
     if (assistantOpen && !event.composedPath().includes(assistantHost)) setAssistantOpen(false);
   }, true);
+
+  // Outlook can move focus or replace the email body without a focus event reaching this script.
+  setInterval(() => {
+    if (assistantElements() && !assistantElements().trigger.hidden) return;
+    const active = closestEditable(document.activeElement);
+    if (active && isVisible(active)) {
+      lastEditable = active;
+      rememberSelection();
+      setAssistantVisible(true);
+    }
+  }, 800);
 
   document.addEventListener('selectionchange', rememberSelection, true);
   document.addEventListener('keyup', rememberSelection, true);
@@ -564,6 +589,12 @@
     if (sender.id !== chrome.runtime.id) return;
     if (message?.type === 'ETM_PREFERENCES_CHANGED') {
       applyPreferences(message.preferences);
+      return;
+    }
+    if (message?.type === 'ETM_AUTH_CHANGED') {
+      templatesLoaded = false;
+      assistantTemplates = [];
+      if (assistantOpen) loadAssistantTemplates();
       return;
     }
     if (message?.type === 'ETM_TOGGLE_INLINE') {

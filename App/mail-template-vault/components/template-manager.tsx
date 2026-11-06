@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePlus2, Mail, Pencil, RefreshCw, Search, Trash2 } from "lucide-react";
 import type { EmailEditor } from "@/lib/email-editor";
+import { useConfirm } from "./confirm-dialog";
 
 type Template = { id: string; name: string; html: string; serverVersion: number; createdAt: number; updatedAt: number; updatedBy: string };
 type Notice = { kind: "success" | "error"; text: string } | null;
@@ -41,6 +42,7 @@ export function TemplateManager() {
   const editor = useRef<EmailEditor | null>(null);
   const startingHtml = useRef("");
   const saveRef = useRef<() => void>(() => {});
+  const { confirm, dialog } = useConfirm();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,8 +112,8 @@ export function TemplateManager() {
     setNotice(null);
   }
 
-  function cancelEdit() {
-    if (hasUnsavedChanges() && !confirm("Discard your unsaved changes?")) return;
+  async function cancelEdit() {
+    if (hasUnsavedChanges() && !(await confirm({ title: "Discard your changes?", message: "Your unsaved changes to this template will be lost.", confirmLabel: "Discard", cancelLabel: "Keep editing", danger: true }))) return;
     setSelected(null);
     setNotice(null);
   }
@@ -143,7 +145,7 @@ export function TemplateManager() {
   useEffect(() => { saveRef.current = save; });
 
   async function remove(item: Template) {
-    if (deleting || !confirm(`Delete “${item.name}”?`)) return;
+    if (deleting || !(await confirm({ title: "Delete this template?", message: `“${item.name}” will be removed for everyone in the workspace.`, confirmLabel: "Delete", danger: true }))) return;
     setDeleting(item.id);
     setNotice(null);
     try {
@@ -164,6 +166,7 @@ export function TemplateManager() {
   if (selected) {
     return (
       <section className="card template-editor-card">
+        {dialog}
         <div className="template-editor-heading">
           <h2>{selected.serverVersion ? "Edit template" : "New template"}</h2>
           <p>{selected.serverVersion ? `Last changed by ${selected.updatedBy}` : "Shared with both administrators after saving."}</p>
@@ -184,6 +187,7 @@ export function TemplateManager() {
 
   return (
     <section className="library">
+      {dialog}
       <div className="library-head">
         <div>
           <h1>Templates</h1>
