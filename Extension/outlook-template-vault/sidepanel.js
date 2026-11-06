@@ -15,6 +15,7 @@
     toastTimer: null,
     refreshing: false,
     refreshAgain: false,
+    authChecked: false,
     loadFailed: false,
     loaded: false,
     inserting: false,
@@ -126,14 +127,28 @@
     render();
   }
 
+  // Answers one question before anything is shown: signed in, signed out, or unknown
+  // because the check itself failed. Unknown still tries to load, and offers a retry.
   async function initializeAccount() {
-    if (!globalThis.ExtensionAuth) return;
+    if (!globalThis.ExtensionAuth) return 'unknown';
     ExtensionAuth.onChange(renderAccount);
     try {
-      renderAccount(await ExtensionAuth.initialize());
+      const auth = await ExtensionAuth.initialize();
+      if (auth.user?.mustChangePassword) {
+        await ExtensionAuth.signOut();
+        state.authChecked = true;
+        showAuthForm('signIn');
+        el.authError.textContent = 'Change your temporary password in the web dashboard, then sign in here.';
+        el.authError.hidden = false;
+        return 'signedOut';
+      }
+      renderAccount(auth);
+      if (auth.user) return 'signedIn';
+      return auth.unreachable ? 'unknown' : 'signedOut';
     } catch (error) {
       console.error('Could not initialize account:', error);
       showToast('Account sign-in is temporarily unavailable.', true);
+      return 'unknown';
     }
   }
 
@@ -173,15 +188,16 @@
     const q = el.searchInput.value.trim();
     const filtering = Boolean(q) || state.recentOnly;
     const filtered = filteredTemplates();
-    const signedOut = !currentUser() && !state.templates.length && !globalThis.ExtensionAuth?.getState?.()?.unreachable;
-    const loading = !state.loaded && !signedOut;
-    const showTools = !signedOut;
+    const checking = !state.authChecked;
+    const signedOut = !checking && !currentUser() && !state.templates.length && !globalThis.ExtensionAuth?.getState?.()?.unreachable;
+    const loading = checking || (!state.loaded && !signedOut);
+    const showTools = !checking && !signedOut;
 
     el.signedOutView.hidden = !signedOut;
     el.signedInTools.hidden = !showTools;
     el.skeletonList.hidden = !loading;
-    el.errorState.hidden = !(state.loadFailed && !state.templates.length && !signedOut);
-    el.emptyState.hidden = !(state.loaded && !state.loadFailed && !state.templates.length && !signedOut);
+    el.errorState.hidden = !(!checking && state.loadFailed && !state.templates.length && !signedOut);
+    el.emptyState.hidden = !(!checking && state.loaded && !state.loadFailed && !state.templates.length && !signedOut);
     el.templateCount.textContent = signedOut || loading ? '' : filtering
       ? `${filtered.length} of ${state.templates.length} Templates`
       : `${state.templates.length} Templates`;
@@ -583,10 +599,17 @@
     render();
   });
 
-  render();
+  renderAccount(null);
   (async () => {
     await loadPreferences();
-    await initializeAccount();
+    const session = await initializeAccount();
+    state.authChecked = true;
+    if (session === 'signedOut') {
+      state.loaded = true;
+      render();
+      return;
+    }
+    render();
     try { await loadTemplates(); }
     catch (error) {
       state.templates = [];

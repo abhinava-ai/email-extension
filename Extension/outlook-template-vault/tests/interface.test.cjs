@@ -428,6 +428,75 @@ test('a temporary password explains what to do and keeps the form open', async (
   assert.equal(await page.evaluate(() => Boolean(window.store.mtv_api_auth_v1)), false);
 });
 
+async function startupPage(t, { token, meDelay = 0, meStatus = 200, mustChange = false }) {
+  const context = await browser.newContext({ viewport: { width: 380, height: 720 } });
+  t.after(() => context.close());
+  await context.addInitScript(({ token, meDelay, meStatus, mustChange, templates }) => {
+    const store = token ? { mtv_api_auth_v1: { token } } : {};
+    window.store = store;
+    window.meCalls = 0;
+    window.templateCalls = 0;
+    window.fetch = async (url) => {
+      if (String(url).endsWith('/api/auth/logout')) return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      window.meCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, meDelay));
+      const body = meStatus === 200 ? { user: { email: 'person@example.com', displayName: 'Person', mustChangePassword: mustChange } } : { error: 'Authentication required.' };
+      return new Response(JSON.stringify(body), { status: meStatus, headers: { 'Content-Type': 'application/json' } });
+    };
+    window.chrome = {
+      runtime: {
+        id: 'x', getURL: (name) => name,
+        sendMessage: async (message) => {
+          if (message.type === 'ETM_STORAGE') { window.templateCalls += 1; return { ok: true, result: { templates, remote: true } }; }
+          if (message.type === 'ETM_PREFERENCES_GET') return { ok: true, result: { interfaceMode: 'popover', inlineButton: true, closeAfterInsert: false, sortOrder: 'name' } };
+          return { ok: true };
+        },
+        onMessage: { addListener() {} }
+      },
+      storage: { local: { get: async (key) => (key in store ? { [key]: store[key] } : {}), set: async (value) => { Object.assign(store, value); }, remove: async (key) => { delete store[key]; } }, onChanged: { addListener() {} } },
+      tabs: { query: async () => [{ id: 1 }], create() {}, sendMessage: async () => ({ ok: true }) }
+    };
+  }, { token, meDelay, meStatus, mustChange, templates: TEMPLATES });
+  const page = await context.newPage();
+  await page.goto(`${base}/sidepanel.html`);
+  return page;
+}
+
+test('with no saved session the sign-in screen shows at once, with no network or template request', async (t) => {
+  const page = await startupPage(t, {});
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  await expect(page.locator('#skeletonList')).toBeHidden();
+  assert.equal(await page.evaluate(() => window.meCalls), 0);
+  assert.equal(await page.evaluate(() => window.templateCalls), 0);
+});
+
+test('while a saved session is being checked, neither the sign-in screen nor an empty list flashes', async (t) => {
+  const page = await startupPage(t, { token: 'saved', meDelay: 700 });
+  await page.waitForFunction(() => window.meCalls === 1);
+  await expect(page.locator('#skeletonList')).toBeVisible();
+  await expect(page.locator('#signedOutView')).toBeHidden();
+  await expect(page.locator('#emptyState')).toBeHidden();
+  await expect(page.locator('#searchInput')).toBeHidden();
+  assert.equal(await page.evaluate(() => window.templateCalls), 0, 'templates wait for the login check');
+  await expect(page.locator('.template-card')).toHaveCount(2);
+  await expect(page.locator('#signedOutView')).toBeHidden();
+  assert.equal(await page.evaluate(() => window.templateCalls), 1);
+});
+
+test('a saved session the server rejects goes straight to sign-in without requesting templates', async (t) => {
+  const page = await startupPage(t, { token: 'old', meStatus: 401 });
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  assert.equal(await page.evaluate(() => window.templateCalls), 0);
+  assert.equal(await page.evaluate(() => Boolean(window.store.mtv_api_auth_v1)), false);
+});
+
+test('a saved session that needs a new password explains it instead of failing silently', async (t) => {
+  const page = await startupPage(t, { token: 'temp', mustChange: true });
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  await expect(page.locator('#authError')).toContainText('Change your temporary password');
+  assert.equal(await page.evaluate(() => window.templateCalls), 0);
+});
+
 test('a network failure with a saved session offers a retry, not a sign-in', async (t) => {
   const context = await browser.newContext({ viewport: { width: 380, height: 720 } });
   t.after(() => context.close());

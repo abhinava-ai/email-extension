@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCard, Download, FileText, LayoutDashboard, Laptop, Mail } from "lucide-react";
+import { CreditCard, Download, FileText, LayoutDashboard, Laptop, Mail, Users } from "lucide-react";
 import { SignOutButton } from "./sign-out-button";
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/templates", label: "Templates", icon: FileText },
   { href: "/devices", label: "Devices", icon: Laptop },
+  { href: "/team", label: "Team", icon: Users, adminOnly: true },
   { href: "/account", label: "Account & plan", icon: CreditCard },
   { href: "/install", label: "Install extension", icon: Download },
 ];
 
-export function PortalShell({ children, email = "account@example.com" }: { children: React.ReactNode; email?: string }) {
+export function PortalShell({ children, email = "account@example.com", role = "member" }: { children: React.ReactNode; email?: string; role?: "admin" | "member" }) {
   const pathname = usePathname();
-  const current = navigation.find((item) => pathname.startsWith(item.href));
+  const visible = navigation.filter((item) => !item.adminOnly || role === "admin");
+  const current = visible.find((item) => pathname.startsWith(item.href));
   const initials = email.slice(0, 2).toUpperCase();
   return (
     <div className="portal">
@@ -23,7 +25,7 @@ export function PortalShell({ children, email = "account@example.com" }: { child
         <Link href="/dashboard" className="brand-lockup"><span className="brand-mark"><Mail size={18} /></span>Mail Template Vault</Link>
         <nav className="nav" aria-label="Portal navigation">
           <p className="nav-label">Workspace</p>
-          {navigation.map(({ href, label, icon: Icon }) => {
+          {visible.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return <Link key={href} className={`nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} href={href}><Icon size={18} />{label}</Link>;
           })}
@@ -39,7 +41,7 @@ export function PortalShell({ children, email = "account@example.com" }: { child
           </div>
         </header>
         <nav className="mobile-nav" aria-label="Mobile portal navigation">
-          {navigation.map(({ href, label }) => <Link key={href} className={pathname.startsWith(href) ? "active" : ""} aria-current={pathname.startsWith(href) ? "page" : undefined} href={href}>{label}</Link>)}
+          {visible.map(({ href, label }) => <Link key={href} className={pathname.startsWith(href) ? "active" : ""} aria-current={pathname.startsWith(href) ? "page" : undefined} href={href}>{label}</Link>)}
         </nav>
         {children}
       </main>

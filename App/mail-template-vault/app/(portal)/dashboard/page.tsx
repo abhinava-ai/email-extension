@@ -17,6 +17,10 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "template.deleted": "Deleted a template",
   "device.logged_out": "Logged out a device",
   "device.removed": "Removed a device",
+  "team.member_added": "Added a team member",
+  "team.reset_password": "Reset a member's password",
+  "team.set_role": "Changed a member's role",
+  "team.set_active": "Changed a member's access",
 };
 
 function activityLabel(eventType: string) {

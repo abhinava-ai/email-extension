@@ -48,7 +48,7 @@ export function AuthForm() {
           {loading ? <><LoaderCircle size={18} className="spin" />Signing in</> : <>Sign in<ArrowRight size={17} /></>}
         </button>
       </form>
-      <p className="auth-switch">Accounts are created manually by an administrator.</p>
+      <p className="auth-switch">Accounts are created by your workspace administrator.</p>
     </div>
   );
 }

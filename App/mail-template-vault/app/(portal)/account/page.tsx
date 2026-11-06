@@ -1,4 +1,5 @@
 import { Check, ShieldCheck } from "lucide-react";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { currentUser } from "@/lib/auth";
 
 export const metadata = { title: "Account & plan" };
@@ -28,10 +29,11 @@ export default async function AccountPage() {
             <div className="list-row"><span className="list-icon"><Check size={18} /></span><div className="list-copy"><strong>Unlimited shared templates</strong><span>Rich editor included</span></div></div>
             <div className="list-row"><span className="list-icon"><Check size={18} /></span><div className="list-copy"><strong>Outlook template insertion</strong><span>Available to authenticated members</span></div></div>
           </div>
-          <p style={{ fontSize: ".8rem" }}>Members are created manually. Public registration is disabled.</p>
+          <p style={{ fontSize: ".8rem" }}>Administrators add members from the Team page. Public registration is disabled.</p>
         </section>
       </div>
       <section className="section-title"><h2>Security</h2></section>
+      <div className="account-password"><ChangePasswordForm voluntary /></div>
       <div className="callout"><ShieldCheck size={22} /><div><strong>Your credentials stay private</strong><p>Database credentials remain on the server and are never shipped to the browser or extension.</p></div></div>
     </div>
   );

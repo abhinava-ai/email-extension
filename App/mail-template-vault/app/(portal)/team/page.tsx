@@ -1,3 +1,25 @@
-import { Clock3, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { RowDataPacket } from "mysql2";
+import { TeamManager, type TeamMember } from "@/components/team-manager";
+import { currentUser } from "@/lib/auth";
+import { rows } from "@/lib/db";
+
 export const metadata = { title: "Team" };
-export default function TeamPage() { return <div className="page"><div className="page-heading"><div><h1>Team</h1><p>A shared workspace for consistent, approved replies is coming later.</p></div></div><div className="card empty-card"><span className="empty-icon"><Users size={24} /></span><h2>Team management is on the roadmap</h2><p>Future releases will support member invitations, shared template libraries, and workspace roles.</p><div className="callout" style={{ maxWidth: 560, margin: "24px auto 0", textAlign: "left" }}><Clock3 size={21} /><div><strong>No setup needed today</strong><p>Your personal vault will remain separate unless you choose to join or create a team.</p></div></div></div></div>; }
+
+type MemberRow = RowDataPacket & { id: string; email: string; display_name: string; role: "admin" | "member"; active: number; must_change_password: number; last_seen: Date | null };
+
+export default async function TeamPage() {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/dashboard");
+  const records = await rows<MemberRow[]>("select u.id,u.email,u.display_name,u.role,u.active,u.must_change_password,(select max(s.last_seen_at) from sessions s where s.user_id=u.id) last_seen from users u order by u.active desc,u.display_name");
+  const members: TeamMember[] = records.map((item) => ({
+    id: item.id,
+    email: item.email,
+    displayName: item.display_name,
+    role: item.role,
+    active: Boolean(item.active),
+    pendingPassword: Boolean(item.must_change_password),
+    lastSeen: item.last_seen ? new Date(item.last_seen).toISOString() : null,
+  }));
+  return <div className="page"><TeamManager members={members} currentUserId={user.id} /></div>;
+}
