@@ -43,8 +43,8 @@ body { position: relative; }
   top: 0;
   z-index: 10;
   flex: 0 0 auto;
-  background: #fff !important;
-  border-color: #e4e7ec !important;
+  background: #f3f4f6 !important;
+  border-color: #e9ebef !important;
 }
 .jodit-toolbar-editor-collection { padding: 5px 6px !important; }
 .jodit-workplace {
@@ -60,10 +60,10 @@ body { position: relative; }
   height: auto !important;
   padding: 24px 28px !important;
   background: #fff !important;
-  color: #242424;
-  font-family: Aptos, "Segoe UI", Arial, Helvetica, sans-serif;
+  color: rgb(0, 0, 0);
+  font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif;
   font-size: 12pt;
-  line-height: 1.5;
+  line-height: normal;
 }
 .jodit-source__mirror,
 .jodit-source textarea {
@@ -71,12 +71,13 @@ body { position: relative; }
   font-size: 13px !important;
   line-height: 1.5 !important;
   background: #fff !important;
-  color: #242424 !important;
+  color: #17181c !important;
 }
 .jodit-status-bar {
   flex: 0 0 auto;
-  background: #fafbfc !important;
-  border-color: #e4e7ec !important;
+  background: #f3f4f6 !important;
+  border-color: #e9ebef !important;
+  color: #737b88 !important;
 }
 .jodit-popup-container, .jodit-dialog__panel { color-scheme: light; }
 

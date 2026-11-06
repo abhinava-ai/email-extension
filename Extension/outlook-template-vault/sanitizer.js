@@ -20,13 +20,15 @@ const TemplateSanitizer = (() => {
     'p', 'div', 'ul', 'ol', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'pre', 'hr'
   ]);
 
+  const GUARDED_STYLE = 'data-mtv-style';
   const VOID_TAGS = new Set(['br', 'img', 'hr']);
   const INLINE_VISUAL_TAGS = new Set(['span', 'strong', 'em', 'u', 's', 'a', 'code', 'sub', 'sup']);
-  const EMAIL_FONT = "Aptos, \"Segoe UI\", Arial, Helvetica, sans-serif";
-  const EMAIL_TEXT_COLOR = '#242424';
+  // Read from Outlook's own compose body, so templates match text typed in Outlook.
+  const EMAIL_FONT = 'Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif';
+  const EMAIL_TEXT_COLOR = 'rgb(0, 0, 0)';
   const EMAIL_LINK_COLOR = '#0563c1';
 
-  const ROOT_STYLE = { 'font-family': EMAIL_FONT, 'font-size': '12pt', 'line-height': '1.5', color: EMAIL_TEXT_COLOR };
+  const ROOT_STYLE = { 'font-family': EMAIL_FONT, 'font-size': '12pt', 'line-height': 'normal', color: EMAIL_TEXT_COLOR };
   const margins = (bottom = '0') => ({ 'margin-top': '0', 'margin-right': '0', 'margin-bottom': bottom, 'margin-left': '0' });
   // This single set of defaults is used by Jodit's canvas and serialized email HTML.
   const EMAIL_RULES = {
@@ -48,7 +50,8 @@ const TemplateSanitizer = (() => {
     img: { 'max-width': '100%', border: '0' },
     table: { 'border-collapse': 'collapse', 'border-spacing': '0' },
     td: { 'vertical-align': 'top' }, th: { 'vertical-align': 'top', 'font-weight': '700', 'text-align': 'center' },
-    hr: { border: '0', 'border-top': '1px solid #d9d9d9', ...margins('14px'), 'margin-top': '14px' },
+    // Separate sides: a "border:0" here would make the top border look already set, and drop it.
+    hr: { 'border-top': '1px solid #d9d9d9', 'border-right': '0', 'border-bottom': '0', 'border-left': '0', ...margins('14px'), 'margin-top': '14px' },
     pre: { ...margins('16px'), 'font-family': 'Consolas, Monaco, monospace', 'white-space': 'pre-wrap' },
     code: { 'font-family': 'Consolas, Monaco, monospace' }
   };
@@ -431,12 +434,25 @@ const TemplateSanitizer = (() => {
     }
   }
 
+  // A page policy can stop parsed style attributes from applying, which would leave every
+  // element.style empty here. Parsing them under another name and setting them through the
+  // style API avoids that. Outlook's stricter Trusted Types policy removes unknown attributes
+  // too, but only for code in Outlook's own page: extension content scripts are exempt.
+  function parseHtml(html) {
+    const guarded = String(html).replace(/<[a-z][^<>]*>/gi, (tag) => tag.replace(/(\s)style(\s*=)/gi, `$1${GUARDED_STYLE}$2`));
+    const doc = new DOMParser().parseFromString(guarded, 'text/html');
+    for (const element of doc.querySelectorAll(`[${GUARDED_STYLE}]`)) {
+      element.style.cssText = element.getAttribute(GUARDED_STYLE);
+      element.removeAttribute(GUARDED_STYLE);
+    }
+    return doc;
+  }
+
   function sanitize(input, options = {}) {
     const html = String(input || '');
     if (!html.trim()) return '';
 
-    const parser = new DOMParser();
-    const sourceDoc = parser.parseFromString(html, 'text/html');
+    const sourceDoc = parseHtml(html);
     inlineDocumentStyles(sourceDoc);
     const outputDoc = document.implementation.createHTMLDocument('');
     const container = outputDoc.createElement('div');
@@ -505,13 +521,20 @@ const TemplateSanitizer = (() => {
           if (!element.hasAttribute(attr)) element.setAttribute(attr, '0');
         }
       }
+      // Outlook's own cell padding beats the cellpadding attribute, but not an inline style.
+      if (tag === 'td' || tag === 'th') {
+        const cellPadding = element.closest('table')?.getAttribute('cellpadding') || '0';
+        for (const side of ['top', 'right', 'bottom', 'left']) {
+          if (!element.style.getPropertyValue(`padding-${side}`)) element.style.setProperty(`padding-${side}`, `${cellPadding}px`);
+        }
+      }
     }
   }
 
   function prepareForEditor(input) {
     const clean = sanitize(input);
     if (!clean) return '';
-    const doc = new DOMParser().parseFromString(clean, 'text/html');
+    const doc = parseHtml(clean);
     applyCanonicalEmailStyles(doc.body);
     return doc.body.innerHTML;
   }
@@ -520,8 +543,7 @@ const TemplateSanitizer = (() => {
     const clean = sanitize(input);
     if (!clean) return '';
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<!doctype html><body>${clean}</body>`, 'text/html');
+    const doc = parseHtml(`<!doctype html><body>${clean}</body>`);
     const wrapper = doc.createElement('div');
     while (doc.body.firstChild) wrapper.appendChild(doc.body.firstChild);
     applyCanonicalEmailStyles(wrapper);
@@ -545,5 +567,5 @@ const TemplateSanitizer = (() => {
       .join('');
   }
 
-  return { sanitize, sanitizePaste, prepareForEditor, toEmailHtml, textToHtml, editorDefaultsCss, editorStyle };
+  return { sanitize, sanitizePaste, prepareForEditor, toEmailHtml, textToHtml, editorDefaultsCss, editorStyle, parseHtml };
 })();

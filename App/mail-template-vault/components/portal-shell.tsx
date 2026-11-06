@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CreditCard, Download, FileText, LayoutDashboard, Mail } from "lucide-react";
+import { CreditCard, Download, FileText, LayoutDashboard, Laptop, Mail } from "lucide-react";
 import { SignOutButton } from "./sign-out-button";
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/templates", label: "Templates", icon: FileText },
+  { href: "/devices", label: "Devices", icon: Laptop },
   { href: "/account", label: "Account & plan", icon: CreditCard },
   { href: "/install", label: "Install extension", icon: Download },
 ];
@@ -19,16 +20,27 @@ export function PortalShell({ children, email = "account@example.com" }: { child
   return (
     <div className="portal">
       <aside className="sidebar">
-        <Link href="/dashboard" className="brand-lockup"><span className="brand-mark"><Mail size={19} /></span>Mail Template Vault</Link>
+        <Link href="/dashboard" className="brand-lockup"><span className="brand-mark"><Mail size={18} /></span>Mail Template Vault</Link>
         <nav className="nav" aria-label="Portal navigation">
           <p className="nav-label">Workspace</p>
-          {navigation.map(({ href, label, icon: Icon }) => <Link key={href} className={`nav-link${pathname.startsWith(href) ? " active" : ""}`} href={href}><Icon size={18} />{label}</Link>)}
+          {navigation.map(({ href, label, icon: Icon }) => {
+            const active = pathname.startsWith(href);
+            return <Link key={href} className={`nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} href={href}><Icon size={18} />{label}</Link>;
+          })}
         </nav>
         <div className="sidebar-footer"><div className="user-mini"><span className="avatar">{initials}</span><div><strong>Your workspace</strong><span>{email}</span></div></div></div>
       </aside>
       <main className="portal-main">
-        <header className="topbar"><span className="topbar-title">{current?.label ?? "Portal"}</span><div className="topbar-actions"><Link className="button button-secondary" href="/install"><Download size={16} />Get extension</Link><button className="icon-button" aria-label="Notifications"><Bell size={18} /></button><SignOutButton /></div></header>
-        <nav className="mobile-nav" aria-label="Mobile portal navigation">{navigation.map(({ href, label }) => <Link key={href} className={pathname.startsWith(href) ? "active" : ""} href={href}>{label}</Link>)}</nav>
+        <header className="topbar">
+          <span className="topbar-title">{current?.label ?? "Portal"}</span>
+          <div className="topbar-actions">
+            <Link className="button button-secondary" href="/install"><Download size={16} />Get extension</Link>
+            <SignOutButton />
+          </div>
+        </header>
+        <nav className="mobile-nav" aria-label="Mobile portal navigation">
+          {navigation.map(({ href, label }) => <Link key={href} className={pathname.startsWith(href) ? "active" : ""} aria-current={pathname.startsWith(href) ? "page" : undefined} href={href}>{label}</Link>)}
+        </nav>
         {children}
       </main>
     </div>

@@ -97,7 +97,7 @@
     defaults.textContent = TemplateSanitizer.editorDefaultsCss('.jodit-wysiwyg');
     document.head.appendChild(defaults);
     const fontList = {
-      'Aptos, "Segoe UI", Arial, Helvetica, sans-serif': 'Aptos',
+      'Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif': 'Aptos',
       'Arial, Helvetica, sans-serif': 'Arial',
       'Calibri, Arial, sans-serif': 'Calibri',
       '"Segoe UI", Arial, sans-serif': 'Segoe UI',
@@ -121,7 +121,6 @@
       spellcheck: true,
       enter: 'p',
       defaultFontSizePoints: 'pt',
-      defaultLineHeight: Number(TemplateSanitizer.editorStyle().lineHeight),
       askBeforePasteHTML: false,
       askBeforePasteFromWord: false,
       processPasteHTML: false,

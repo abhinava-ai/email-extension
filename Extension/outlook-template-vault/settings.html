@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · Mail Template Vault</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body class="settings-body">
+  <main class="settings-page">
+    <header class="settings-head">
+      <span class="settings-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span>
+      <div>
+        <h1>Settings</h1>
+        <p>Choose how Mail Template Vault opens in Outlook.</p>
+      </div>
+      <span id="saveStatus" class="save-status" role="status" hidden>Saved</span>
+    </header>
+
+    <section class="settings-section" aria-labelledby="interfaceHeading">
+      <h2 id="interfaceHeading">Interface</h2>
+      <p class="section-copy">This decides what happens when you click the extension icon in Chrome.</p>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="interfaceHeading">
+        <label class="mode-card">
+          <input type="radio" name="interfaceMode" value="sidepanel">
+          <svg class="mode-art" viewBox="0 0 160 96" aria-hidden="true"><rect x="1" y="1" width="158" height="94" rx="9" class="art-frame"/><rect x="110" y="8" width="42" height="80" rx="5" class="art-accent"/><rect x="116" y="16" width="30" height="5" rx="2.500" class="art-on"/><rect x="116" y="27" width="30" height="13" rx="3" class="art-on"/><rect x="116" y="44" width="30" height="13" rx="3" class="art-on"/><rect x="10" y="14" width="92" height="6" rx="3" class="art-line"/><rect x="10" y="28" width="92" height="52" rx="4" class="art-line"/></svg>
+          <span class="mode-name">Side Panel</span>
+          <span class="mode-copy">Chrome's built-in panel stays open beside Outlook while you work.</span>
+          <span class="mode-check" aria-hidden="true"></span>
+        </label>
+        <label class="mode-card">
+          <input type="radio" name="interfaceMode" value="popover">
+          <svg class="mode-art" viewBox="0 0 160 96" aria-hidden="true"><rect x="1" y="1" width="158" height="94" rx="9" class="art-frame"/><rect x="10" y="14" width="140" height="6" rx="3" class="art-line"/><rect x="10" y="28" width="140" height="56" rx="4" class="art-line"/><rect x="94" y="10" width="56" height="76" rx="7" class="art-accent"/><rect x="101" y="18" width="42" height="5" rx="2.500" class="art-on"/><rect x="101" y="29" width="42" height="14" rx="3" class="art-on"/><rect x="101" y="47" width="42" height="14" rx="3" class="art-on"/></svg>
+          <span class="mode-name">Popover</span>
+          <span class="mode-copy">A floating window over Outlook that you can move, resize and minimize.</span>
+          <span class="mode-check" aria-hidden="true"></span>
+        </label>
+        <label class="mode-card">
+          <input type="radio" name="interfaceMode" value="inline">
+          <svg class="mode-art" viewBox="0 0 160 96" aria-hidden="true"><rect x="1" y="1" width="158" height="94" rx="9" class="art-frame"/><rect x="10" y="10" width="140" height="76" rx="5" class="art-line"/><rect x="18" y="20" width="62" height="5" rx="2.500" class="art-mute"/><rect x="18" y="31" width="44" height="5" rx="2.500" class="art-mute"/><rect x="72" y="26" width="60" height="42" rx="6" class="art-accent"/><rect x="78" y="33" width="48" height="10" rx="3" class="art-on"/><rect x="78" y="47" width="48" height="10" rx="3" class="art-on"/><circle cx="136" cy="74" r="7" class="art-accent"/></svg>
+          <span class="mode-name">Inline Editor</span>
+          <span class="mode-copy">A small picker appears right inside the email you are writing.</span>
+          <span class="mode-check" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div id="sidePanelNote" class="note" hidden>
+        <div>
+          <strong>Opens on the right</strong>
+          <p>The panel opens on the right of Chrome. If yours is on the left, set it to Right under Appearance, then Side panel.</p>
+        </div>
+        <button id="openChromeSettingsBtn" class="secondary compact" type="button">Open Chrome settings</button>
+      </div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="behaviourHeading">
+      <h2 id="behaviourHeading">Behaviour</h2>
+      <div class="row-card">
+        <label class="setting-row" for="inlineButton">
+          <span><strong>Show the button inside emails</strong><small id="inlineButtonHint">Adds a small template button to the corner of the email you are writing.</small></span>
+          <input id="inlineButton" class="switch" type="checkbox" role="switch">
+        </label>
+        <label class="setting-row" for="closeAfterInsert">
+          <span><strong>Close the popover after inserting</strong><small>Gets the window out of the way once the template is in your email.</small></span>
+          <input id="closeAfterInsert" class="switch" type="checkbox" role="switch">
+        </label>
+        <div class="setting-row">
+          <label for="sortOrder"><strong>Sort templates by</strong><small>Used in the panel and popover lists.</small></label>
+          <select id="sortOrder" class="select">
+            <option value="name">Name A–Z</option>
+            <option value="recent">Recently updated</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <span><strong>Popover position</strong><small>Moves the popover back to its starting place and size next time it opens.</small></span>
+          <button id="resetPopoverBtn" class="secondary compact" type="button">Reset position</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="aboutHeading">
+      <h2 id="aboutHeading">Workspace</h2>
+      <div class="row-card">
+        <div class="setting-row">
+          <span><strong>Templates are managed online</strong><small>Add, edit and delete templates in the web dashboard. They appear here after you sync.</small></span>
+          <button id="openDashboardBtn" class="secondary compact" type="button">Open dashboard</button>
+        </div>
+        <div class="setting-row">
+          <span><strong>Outlook on the web</strong><small>Templates insert at your cursor. The extension never sends an email for you.</small></span>
+          <button id="openOutlookBtn" class="secondary compact" type="button">Open Outlook</button>
+        </div>
+      </div>
+      <p id="versionLine" class="version-line"></p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="supabase-config.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

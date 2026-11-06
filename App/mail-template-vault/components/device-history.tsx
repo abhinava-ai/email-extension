@@ -18,7 +18,7 @@ export function DeviceHistory({ devices }:{ devices:DeviceRecord[] }) {
     <div className="device-row device-head" role="row"><span>User</span><span>Device</span><span>Access</span><span>Activity</span><span>Status</span><span></span></div>
     {devices.map(device=><div className="device-row" role="row" key={device.id}>
       <div className="device-user"><strong>{device.displayName}</strong><span>{device.email}</span><small>{device.role}</small></div>
-      <div className="device-detail"><span className="device-icon">{device.client==="extension"?<Monitor size={17}/>:<Smartphone size={17}/>}</span><div><strong>{device.browser}</strong><span>{device.system}{device.ipAddress?` • ${device.ipAddress}`:""}</span></div></div>
+      <div className="device-detail"><span className="device-icon">{/android|ios|iphone|ipad/i.test(device.system)?<Smartphone size={17}/>:<Monitor size={17}/>}</span><div><strong>{device.browser}</strong><span>{device.system}{device.ipAddress?` • ${device.ipAddress}`:""}</span></div></div>
       <div><strong>{device.client==="extension"?"Outlook extension":"Web dashboard"}</strong></div>
       <div className="device-dates"><span>Last active {new Date(device.lastSeenAt).toLocaleString()}</span><span>Login {new Date(device.createdAt).toLocaleString()}</span></div>
       <div><span className={`session-status ${device.status.toLowerCase().replaceAll(" ","-")}`}>{device.status}</span></div>

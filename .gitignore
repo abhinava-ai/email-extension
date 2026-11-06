@@ -1,3 +1,6 @@
+# Generated Chrome dev folder (npm run dev in Extension/outlook-template-vault)
+Extension/chrome-dev/
+
 # Environment variables and local secrets
 .env
 .env.*

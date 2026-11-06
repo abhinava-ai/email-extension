@@ -10,57 +10,117 @@
   <main class="app-shell">
     <section id="listView" class="view">
       <header class="topbar">
-        <div><p class="eyebrow">OUTLOOK</p><h1>Template Vault</h1></div>
-        <button id="syncBtn" class="secondary compact sync-button" type="button" title="Load the latest templates from the server">Sync</button>
+        <button id="menuBtn" class="round-btn" type="button" aria-label="Open menu" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="title-block">
+          <h1><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h4l2 2h7A1.5 1.5 0 0 1 20 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><path d="M8 13h8M8 16h5"/></svg>Templates</h1>
+          <p id="templateCount" class="title-count" aria-live="polite"></p>
+        </div>
+        <button id="syncBtn" class="plain-icon-btn" type="button" title="Load the latest templates from the server" aria-label="Sync templates">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7.5A1.5 1.5 0 0 0 6 4.5v15A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V7z"/><path d="M14 3v4h4M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5"/></svg>
+        </button>
       </header>
 
-      <label class="search-wrap" for="searchInput">
-        <span class="search-icon">⌕</span>
-        <input id="searchInput" type="search" placeholder="Search templates" autocomplete="off">
-      </label>
-
-      <div class="template-scroll">
-        <div id="templateList" class="template-list" aria-live="polite"></div>
-
-        <div id="emptyState" class="empty-state" hidden>
-          <div class="empty-icon">✉</div>
-          <h2>No templates available</h2>
-          <p>Add templates from the web dashboard. They will appear here automatically.</p>
+      <div id="signedInTools">
+        <label class="search-wrap" for="searchInput">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="searchInput" type="search" placeholder="Search Template" autocomplete="off">
+        </label>
+        <div class="list-tools">
+          <span id="sortLabel" class="sort-label">Name A–Z</span>
+          <button id="filterBtn" class="filter-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+            Filter
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+            <span id="filterDot" class="filter-dot" hidden></span>
+          </button>
         </div>
       </div>
 
-      <div class="bottom-panel">
-        <section id="accountCard" class="account-card" aria-labelledby="accountTitle">
-          <div id="signedOutView">
-            <div class="account-summary">
-              <div><p class="eyebrow">ACCOUNT</p><h2 id="accountTitle">Use your vault anywhere</h2></div>
-              <span class="plan-badge">Free</span>
-            </div>
-            <p class="account-copy">Sign in to load templates securely from your private workspace.</p>
-            <div class="account-actions">
-              <button id="showSignInBtn" class="secondary compact" type="button">Sign in</button>
-              <button id="showCreateAccountBtn" class="text-btn account-link" type="button">Create account</button>
-            </div>
-            <form id="authForm" class="auth-form" hidden>
-              <p id="authFormTitle" class="auth-form-title">Sign in</p>
-              <label id="authNameField" class="auth-field" hidden>Full name<input id="authName" name="name" maxlength="120" autocomplete="name"></label>
-              <label class="auth-field">Email<input id="authEmail" name="email" type="email" autocomplete="email" required></label>
-              <label class="auth-field">Password<input id="authPassword" name="password" type="password" minlength="8" autocomplete="current-password" required></label>
-              <p id="authError" class="form-error" hidden></p>
-              <div class="auth-form-actions"><button id="authSubmitBtn" class="primary compact" type="submit">Sign in</button><button id="cancelAuthBtn" class="text-btn" type="button">Cancel</button></div>
-            </form>
-          </div>
-          <div id="signedInView" hidden>
-            <div class="account-summary">
-              <div class="account-identity"><span id="accountAvatar" class="account-avatar">A</span><div><strong id="accountName">Account</strong><span id="accountEmail"></span></div></div>
-              <button id="signOutBtn" class="text-btn account-link sign-out-inline" type="button">Sign out</button>
-            </div>
-          </div>
+      <div class="template-scroll">
+        <div id="skeletonList" class="template-list" aria-hidden="true" hidden>
+          <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+        </div>
+        <div id="templateList" class="template-list" aria-live="polite"></div>
+
+        <div id="emptyState" class="empty-state" hidden>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></div>
+          <h2>No templates available</h2>
+          <p>Add templates from the web dashboard. They will appear here automatically.</p>
+        </div>
+
+        <div id="errorState" class="empty-state" hidden>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <h2>Templates could not load</h2>
+          <p id="errorMessage">Check your connection and try again.</p>
+          <button id="retryLoadBtn" class="primary compact" type="button">Try again</button>
+        </div>
+
+        <section id="signedOutView" class="signin-card" aria-labelledby="accountTitle" hidden>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></div>
+          <h2 id="accountTitle">Sign in to your vault</h2>
+          <p class="account-copy">Use your private workspace account to load your shared templates.</p>
+          <button id="showSignInBtn" class="primary wide" type="button">Sign in</button>
+          <button id="showCreateAccountBtn" class="text-btn account-link" type="button" hidden>Create account</button>
+          <form id="authForm" class="auth-form" hidden>
+            <p id="authFormTitle" class="auth-form-title">Sign in</p>
+            <label id="authNameField" class="auth-field" hidden>Full name<input id="authName" name="name" maxlength="120" autocomplete="name"></label>
+            <label class="auth-field">Email<input id="authEmail" name="email" type="email" autocomplete="email" required></label>
+            <label class="auth-field">Password<input id="authPassword" name="password" type="password" minlength="8" autocomplete="current-password" required></label>
+            <p id="authError" class="form-error" role="alert" hidden></p>
+            <div class="auth-form-actions"><button id="authSubmitBtn" class="primary wide" type="submit">Sign in</button><button id="cancelAuthBtn" class="text-btn" type="button">Cancel</button></div>
+          </form>
         </section>
       </div>
+
+      <button id="addTemplateFab" class="fab" type="button" title="Add or edit templates in the web dashboard" aria-label="Add a template in the web dashboard" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7.5A1.5 1.5 0 0 0 6 4.5v15A1.5 1.5 0 0 0 7.5 21H12"/><path d="M14 3v4h4v4M17.5 15v6M14.5 18h6"/></svg>
+      </button>
     </section>
 
-    <div id="toast" class="toast" hidden></div>
+    <div id="navMenu" class="menu nav-menu" role="menu" hidden>
+      <div id="signedInView" class="menu-identity" hidden>
+        <span id="accountAvatar" class="avatar">A</span>
+        <div class="account-identity"><strong id="accountName">Account</strong><span id="accountEmail"></span></div>
+      </div>
+      <button id="openSettingsBtn" class="menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>Settings &amp; interface
+      </button>
+      <button id="openDashboardBtn" class="menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.500v-11A1.5 1.5 0 0 1 5.500 6H10"/></svg>Open web dashboard
+      </button>
+      <button id="signOutBtn" class="menu-item danger" type="button" role="menuitem" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5.500A1.500 1.500 0 0 0 4 5.500v13A1.500 1.500 0 0 0 5.500 20H10M15 8l4 4-4 4M19 12H9"/></svg>Sign out
+      </button>
+    </div>
+
+    <div id="filterMenu" class="menu filter-menu" role="menu" hidden>
+      <p class="menu-label">Sort by</p>
+      <button class="menu-item" type="button" role="menuitemradio" data-sort="name">Name A–Z</button>
+      <button class="menu-item" type="button" role="menuitemradio" data-sort="recent">Recently updated</button>
+      <p class="menu-label">Show</p>
+      <button id="recentOnlyBtn" class="menu-item" type="button" role="menuitemcheckbox" aria-checked="false">Updated this week only</button>
+    </div>
+
+    <div id="cardMenu" class="menu card-menu" role="menu" hidden>
+      <button class="menu-item" type="button" role="menuitem" data-card-action="insert">Insert into email</button>
+      <button class="menu-item" type="button" role="menuitem" data-card-action="preview">Preview</button>
+      <button class="menu-item" type="button" role="menuitem" data-card-action="copy">Copy template</button>
+      <button class="menu-item" type="button" role="menuitem" data-card-action="manage">Edit in dashboard</button>
+    </div>
+
+    <div id="previewSheet" class="sheet-backdrop" hidden>
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+        <header class="sheet-head">
+          <h2 id="previewTitle">Preview</h2>
+          <button id="closePreviewBtn" class="round-btn small" type="button" aria-label="Close preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </header>
+        <div id="previewBody" class="sheet-body"></div>
+        <footer class="sheet-foot"><button id="previewInsertBtn" class="primary wide" type="button">Insert into email</button></footer>
+      </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" hidden></div>
   </main>
 
   <script src="supabase-config.js"></script>

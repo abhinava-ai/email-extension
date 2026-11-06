@@ -1,7 +1,7 @@
 :root { color-scheme: light; }
 [hidden] { display: none !important; }
 html, body { width: 100%; min-width: 760px; min-height: 520px; }
-.editor-popup-body { overflow: auto; background: #f4f6f8; }
+.editor-popup-body { overflow: auto; background: var(--bg); }
 .popup-editor-shell { min-height: 100vh; padding: 0 20px 18px; box-sizing: border-box; }
 
 .popup-editor-header {
@@ -15,12 +15,12 @@ html, body { width: 100%; min-width: 760px; min-height: 520px; }
   max-width: 1180px;
   margin: 0 auto 14px;
   padding: 14px 0 12px;
-  background: rgba(244, 246, 248, .96);
-  border-bottom: 1px solid rgba(208, 213, 221, .8);
+  background: rgba(247, 248, 250, .96);
+  border-bottom: 1px solid var(--border);
   backdrop-filter: blur(8px);
 }
 .popup-editor-title-wrap { min-width: 0; }
-.popup-editor-title-wrap h1 { margin-top: 3px; font-size: 22px; }
+.popup-editor-title-wrap h1 { justify-content: flex-start; margin-top: 3px; font-size: 22px; }
 .popup-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .save-state { color: var(--muted); font-size: 11px; white-space: nowrap; margin-right: 2px; }
 .save-state.saved { color: var(--success); }
@@ -37,8 +37,8 @@ html, body { width: 100%; min-width: 760px; min-height: 520px; }
   position: relative;
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgba(16, 24, 40, .06);
+  border-radius: 16px;
+  box-shadow: none;
   overflow: hidden;
 }
 
