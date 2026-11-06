@@ -13,6 +13,8 @@ function transport() {
     host,
     port,
     secure: port === 465,
+    // Port 587 starts unencrypted, so refuse to carry on unless it upgrades.
+    requireTLS: port === 587,
     auth: user ? { user, pass: process.env.SMTP_PASSWORD || "" } : undefined,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
@@ -33,8 +35,49 @@ function content({ name, purpose, link, invitedBy }: AccountEmail) {
   return { subject, text, html };
 }
 
+function graphSettings() {
+  const tenant = process.env.GRAPH_TENANT_ID?.trim();
+  const clientId = process.env.GRAPH_CLIENT_ID?.trim();
+  const secret = process.env.GRAPH_CLIENT_SECRET?.trim();
+  const from = process.env.MAIL_FROM?.trim();
+  return tenant && clientId && secret && from ? { tenant, clientId, secret, from } : null;
+}
+
+// Microsoft 365 is turning off password-based SMTP, so its mailboxes send through Microsoft Graph.
+async function sendWithGraph(email: AccountEmail, settings: NonNullable<ReturnType<typeof graphSettings>>) {
+  const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(settings.tenant)}/oauth2/v2.0/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: settings.clientId, client_secret: settings.secret, scope: "https://graph.microsoft.com/.default" }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const token = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !token.access_token) throw new Error(`Microsoft sign-in failed (${tokenResponse.status} ${token.error || "no token"})`);
+  const { subject, html } = content(email);
+  const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(settings.from)}/sendMail`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: email.to, name: email.name } }] }, saveToSentItems: false }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!sendResponse.ok) {
+    const failure = await sendResponse.json().catch(() => ({}));
+    throw new Error(`Microsoft Graph refused the email (${sendResponse.status} ${failure.error?.code || "unknown"})`);
+  }
+}
+
 // Never throws: a mail problem must not undo the member being added. The admin gets a link to share instead.
 export async function sendAccountEmail(email: AccountEmail) {
+  const graph = graphSettings();
+  if (graph) {
+    try {
+      await sendWithGraph(email, graph);
+      return true;
+    } catch (error) {
+      console.error("Could not send account email:", error instanceof Error ? error.message : "unknown error");
+      return false;
+    }
+  }
   const mailer = transport();
   if (!mailer) return false;
   const address = process.env.MAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || "no-reply@localhost";

@@ -6,7 +6,22 @@ Configure the values documented in `.env.example`. Use `DB_HOST=127.0.0.1`; neve
 
 ## Invitation email
 
-To send invitation and password-reset emails, set `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM` in hPanel (a mailbox such as `noreply@abhinava.ai`), and make sure `APP_ORIGIN` is the live address. `SMTP_HOST` and `SMTP_PORT` default to Hostinger. Restart the app afterwards. Until then, the Team page shows a one-time link to share by hand. The `account_tokens` table is created automatically on first use.
+`abhinava.ai` mail runs on Microsoft 365, so the app sends through Microsoft Graph. Until this is set up, the Team page shows a one-time link to share by hand. The `account_tokens` table is created automatically on first use.
+
+1. In the Exchange admin center, create a shared mailbox `noreply@abhinava.ai`.
+2. In the Microsoft Entra admin center, add an app registration, and note its Application (client) ID, Directory (tenant) ID and Enterprise application object ID. Create a client secret, and note when it expires. Do not grant it Microsoft Graph `Mail.Send` in Entra, because that would let it send as anyone.
+3. In Exchange Online PowerShell, limit the app to that one mailbox:
+
+```powershell
+New-ServicePrincipal -AppId <client-id> -ObjectId <enterprise-app-object-id> -DisplayName "Mail Template Vault"
+New-ManagementScope -Name "Mail Template Vault sender" -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'noreply@abhinava.ai'"
+New-ManagementRoleAssignment -App <client-id> -Role "Application Mail.Send" -CustomResourceScope "Mail Template Vault sender"
+Test-ServicePrincipalAuthorization -Identity <client-id> -Resource noreply@abhinava.ai
+```
+
+4. In hPanel, set `MAIL_FROM=noreply@abhinava.ai`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID` and `GRAPH_CLIENT_SECRET`, check that `APP_ORIGIN` is the live address, and restart the app.
+
+When the client secret expires, emails stop and the Team page goes back to showing links, so renew it before then. For any other provider, use `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` and `SMTP_PASSWORD` instead.
 
 ## First deployment
 
