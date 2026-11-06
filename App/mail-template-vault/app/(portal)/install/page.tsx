@@ -4,10 +4,8 @@ import { CheckCircle2, Chrome, Download, PanelLeft, PanelsTopLeft, Pin, TextCurs
 
 export const metadata = { title: "Install extension" };
 
-const PACKAGE_PATH = "/downloads/mail-template-vault-extension.zip";
-
 export default function InstallPage() {
-  const packageAvailable = existsSync(path.join(process.cwd(), "public", PACKAGE_PATH));
+  const packageAvailable = existsSync(path.join(process.cwd(), "private", "mail-template-vault-extension.zip"));
   return (
     <div className="page">
       <div className="page-heading"><div><h1>Install the extension</h1><p>Add Mail Template Vault to Chrome, then keep it one click away while you work in Outlook.</p></div></div>
@@ -16,7 +14,7 @@ export default function InstallPage() {
           <h2>Private installation</h2>
           <p>Download the approved package, unzip it, then choose Load unpacked on Chrome&apos;s extension page. Public Web Store registration is not required for private use.</p>
           {packageAvailable
-            ? <a className="button button-primary" href={PACKAGE_PATH} download><Download size={18} />Download extension package</a>
+            ? <a className="button button-primary" href="/api/extension/download" download><Download size={18} />Download extension package</a>
             : <p className="form-message">The extension package has not been uploaded to this site yet. Ask an administrator for the approved package.</p>}
           <div className="divider" />
           <div className="callout"><CheckCircle2 size={21} /><div><strong>Existing extension users</strong><p>Reload the existing installation so its identity and local template migration data are preserved.</p></div></div>

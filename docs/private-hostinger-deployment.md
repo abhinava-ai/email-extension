@@ -23,7 +23,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package-extension.ps1 `
 
 Replace the example with the deployed app URL. The URL is mandatory; packaging removes
 the localhost endpoint and narrows network permission to the Outlook sites and that exact HTTPS host.
-It also copies the package to `App/mail-template-vault/public/downloads`, which is what the portal's
-Install page offers to signed-in users, so commit that copy with each release.
+It also copies the package to `App/mail-template-vault/private`, which the portal's Install page offers
+through a signed-in route, so commit that copy with each release. Never put it in `public/`: Hostinger
+serves that folder directly, without the app's sign-in checks.
 
 Test authentication, mandatory password changes, editing in both directions, version conflicts, one-time local import, offline cache behavior, template insertion, and floating-window drag/resize/minimize behavior.

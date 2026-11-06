@@ -11,7 +11,7 @@ $apiOrigin = $apiUri.GetLeftPart([System.UriPartial]::Authority)
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $repositoryRoot 'Extension\outlook-template-vault'
 $release = Join-Path $repositoryRoot 'release'
-$portalDownloads = Join-Path $repositoryRoot 'App\mail-template-vault\public\downloads'
+$portalDownloads = Join-Path $repositoryRoot 'App\mail-template-vault\private'
 $stage = Join-Path $env:TEMP ('mtv-extension-' + [guid]::NewGuid().ToString('N'))
 $version = (Get-Content -LiteralPath (Join-Path $source 'manifest.json') -Raw | ConvertFrom-Json).version
 $destination = Join-Path $release "mail-template-vault-extension-v$version.zip"
@@ -36,7 +36,7 @@ try {
 
   if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Force }
   Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $destination -CompressionLevel Optimal
-  # The Install page offers this copy to signed-in users.
+  # The Install page offers this copy through a signed-in route. It must stay out of public/.
   Copy-Item -LiteralPath $destination -Destination (Join-Path $portalDownloads 'mail-template-vault-extension.zip') -Force
   Write-Output $destination
 } finally {
