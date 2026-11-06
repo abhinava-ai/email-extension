@@ -92,6 +92,14 @@ export function TemplateManager() {
     return name !== selected.name || Boolean(editor.current && editor.current.getHtml() !== startingHtml.current);
   }, [name, selected]);
 
+  // Picks up changes other people made while this tab was in the background.
+  useEffect(() => {
+    if (selected) return;
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [load, selected]);
+
   useEffect(() => {
     if (!selected) return;
     const warn = (event: BeforeUnloadEvent) => { if (hasUnsavedChanges()) event.preventDefault(); };
@@ -133,7 +141,7 @@ export function TemplateManager() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not save template.");
       setSelected(null);
-      setNotice({ kind: "success", text: `Saved “${name.trim()}”. Press Sync in the extension to see it there.` });
+      setNotice({ kind: "success", text: `Saved “${name.trim()}”. It appears in the extension automatically.` });
       await load();
     } catch (error) {
       setNotice({ kind: "error", text: error instanceof TypeError ? "Could not reach the server. Your changes are still here, so try saving again." : error instanceof Error ? error.message : "Could not save template." });

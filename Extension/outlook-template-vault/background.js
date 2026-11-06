@@ -8,9 +8,9 @@ const OUTLOOK_ORIGINS = new Set([
 ]);
 const AUTH_STORAGE_KEY = 'mtv_api_auth_v1';
 const MIGRATION_KEY = 'mtv_mysql_migrated_v1';
-// v1 could hold a left-side position from the old default. Popovers now start on the right.
-const LEGACY_FLOAT_STATE_KEY = 'mtv_floating_window_v1';
-const FLOAT_STATE_KEY = 'mtv_floating_window_v2';
+// Earlier versions could hold a left-side position or a size that no longer applies.
+const LEGACY_FLOAT_STATE_KEYS = ['mtv_floating_window_v1', 'mtv_floating_window_v2'];
+const FLOAT_STATE_KEY = 'mtv_floating_window_v3';
 const PREFERENCES_KEY = 'mtv_preferences_v1';
 const INTERFACE_MODES = new Set(['sidepanel', 'popover', 'inline']);
 const SORT_ORDERS = new Set(['name', 'recent']);
@@ -75,7 +75,7 @@ async function fetchRemoteTemplates() {
 }
 
 async function clearLegacyTemplateData() {
-  await chrome.storage.local.remove([TemplateStorage.LOCAL_KEY, MIGRATION_KEY, LEGACY_FLOAT_STATE_KEY]);
+  await chrome.storage.local.remove([TemplateStorage.LOCAL_KEY, MIGRATION_KEY, ...LEGACY_FLOAT_STATE_KEYS]);
   const synced = await chrome.storage.sync.get(null);
   const keys = Object.keys(synced).filter((key) =>
     key === TemplateStorage.MANIFEST_KEY || key.startsWith('etm_chunk_v1_'));

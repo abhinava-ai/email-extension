@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicPaths = new Set(["/", "/login"]);
+const publicPaths = new Set(["/", "/login", "/forgot-password", "/set-password"]);
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get("mtv_session")?.value;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
@@ -48,7 +49,8 @@ export function AuthForm() {
           {loading ? <><LoaderCircle size={18} className="spin" />Signing in</> : <>Sign in<ArrowRight size={17} /></>}
         </button>
       </form>
-      <p className="auth-switch">Accounts are created by your workspace administrator.</p>
+      <p className="auth-switch"><Link className="text-link" href="/forgot-password">Forgot your password?</Link></p>
+      <p className="auth-switch auth-switch-note">Accounts are created by your workspace administrator.</p>
     </div>
   );
 }

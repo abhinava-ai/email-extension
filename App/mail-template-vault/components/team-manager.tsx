@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, KeyRound, LoaderCircle, ShieldCheck, ShieldOff, UserMinus, UserPlus, UserRoundCheck } from "lucide-react";
+import { Check, Copy, KeyRound, LoaderCircle, MailCheck, Send, ShieldCheck, ShieldOff, UserMinus, UserPlus, UserRoundCheck } from "lucide-react";
 import { useConfirm } from "./confirm-dialog";
 
 export type TeamMember = { id: string; email: string; displayName: string; role: "admin" | "member"; active: boolean; pendingPassword: boolean; lastSeen: string | null };
-type Issued = { name: string; email: string; password: string; heading: string };
-
-const loginAddress = () => `${window.location.origin}/login`;
+type Issued = { name: string; email: string; purpose: "invite" | "reset"; emailSent: boolean; link?: string };
 
 export function TeamManager({ members, currentUserId }: { members: TeamMember[]; currentUserId: string }) {
   const router = useRouter();
@@ -38,7 +36,7 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
       if (!response.ok) throw new Error(body.error || "Could not add this member.");
       setAdding(false);
       setCopied(false);
-      setIssued({ name: displayName, email, password: body.temporaryPassword, heading: "Member added" });
+      setIssued({ name: displayName, email, purpose: "invite", emailSent: body.emailSent, link: body.link });
       router.refresh();
     } catch (failure) {
       setAddError(failure instanceof TypeError ? "Could not reach the server. Try again." : failure instanceof Error ? failure.message : "Could not add this member.");
@@ -54,9 +52,9 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
       const response = await fetch(`/api/team/${member.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not update this member.");
-      if (body.temporaryPassword) {
+      if (change.action === "send_link") {
         setCopied(false);
-        setIssued({ name: member.displayName, email: member.email, password: body.temporaryPassword, heading: "Password reset" });
+        setIssued({ name: member.displayName, email: member.email, purpose: body.purpose, emailSent: body.emailSent, link: body.link });
       }
       router.refresh();
     } catch (failure) {
@@ -66,8 +64,10 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
     }
   }
 
-  async function resetPassword(member: TeamMember) {
-    if (await confirm({ title: `Reset ${member.displayName}'s password?`, message: "Their current password stops working and they are signed out everywhere. You will get a temporary password to share.", confirmLabel: "Reset password", danger: true })) update(member, { action: "reset_password" });
+  async function sendLink(member: TeamMember) {
+    if (await confirm(member.pendingPassword
+      ? { title: `Resend ${member.displayName}'s invitation?`, message: "A new link goes out and the previous one stops working.", confirmLabel: "Resend invitation" }
+      : { title: `Send ${member.displayName} a password reset?`, message: "They get a link that expires in 1 hour. Their current password keeps working until they use it.", confirmLabel: "Send reset link" })) update(member, { action: "send_link" });
   }
   async function toggleRole(member: TeamMember) {
     const makeAdmin = member.role !== "admin";
@@ -86,8 +86,7 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
   }
 
   async function copyDetails() {
-    if (!issued) return;
-    await navigator.clipboard.writeText(`Mail Template Vault\nSign in: ${loginAddress()}\nEmail: ${issued.email}\nTemporary password: ${issued.password}\nYou will be asked to choose a new password.`);
+    if (issued?.link) await navigator.clipboard.writeText(issued.link);
     setCopied(true);
   }
 
@@ -100,7 +99,7 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
           <h1>Team</h1>
           <p>{activeCount} active {activeCount === 1 ? "member" : "members"}. Everyone shares the same template library.</p>
         </div>
-        <button className="button button-primary" onClick={() => { setAddError(""); setAdding(true); }}><UserPlus size={17} />Add member</button>
+        <button className="button button-primary" onClick={() => { setAddError(""); setAdding(true); }}><UserPlus size={17} />Invite member</button>
       </div>
 
       {error && <div className="form-message team-message" role="alert">{error}</div>}
@@ -119,13 +118,15 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
               <div className="team-badges">
                 <span className={`team-chip${member.role === "admin" ? " admin" : ""}`}>{member.role === "admin" ? "Administrator" : "Member"}</span>
                 {!member.active && <span className="session-status removed">Deactivated</span>}
-                {member.active && member.pendingPassword && <span className="session-status inactive">Password pending</span>}
+                {member.active && member.pendingPassword && <span className="session-status inactive">Invited</span>}
               </div>
               {!self && (
                 <div className="team-actions">
                   {busy === member.id ? <LoaderCircle size={18} className="spin" /> : (
                     <>
-                      {member.active && <button className="icon-button small" title="Reset password" aria-label={`Reset password for ${member.displayName}`} onClick={() => resetPassword(member)}><KeyRound size={15} /></button>}
+                      {member.active && (member.pendingPassword
+                        ? <button className="icon-button small" title="Resend invitation" aria-label={`Resend invitation to ${member.displayName}`} onClick={() => sendLink(member)}><Send size={15} /></button>
+                        : <button className="icon-button small" title="Send password reset" aria-label={`Send password reset to ${member.displayName}`} onClick={() => sendLink(member)}><KeyRound size={15} /></button>)}
                       {member.active && <button className="icon-button small" title={member.role === "admin" ? "Remove administrator access" : "Make administrator"} aria-label={`${member.role === "admin" ? "Remove administrator access from" : "Make administrator:"} ${member.displayName}`} onClick={() => toggleRole(member)}>{member.role === "admin" ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}</button>}
                       {member.active
                         ? <button className="icon-button small danger" title="Deactivate" aria-label={`Deactivate ${member.displayName}`} onClick={() => toggleActive(member)}><UserMinus size={15} /></button>
@@ -142,8 +143,8 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
       {adding && (
         <dialog ref={addDialog} className="confirm-dialog" aria-labelledby="add-member-title" onCancel={(event) => { event.preventDefault(); setAdding(false); }}>
           <form className="confirm-body" onSubmit={addMember}>
-            <h2 id="add-member-title">Add a team member</h2>
-            <p>They get a temporary password, and must choose their own the first time they sign in.</p>
+            <h2 id="add-member-title">Invite a team member</h2>
+            <p>They get an email with a link to choose their own password. The link expires in 7 days.</p>
             <div className="form-stack">
               <div className="field"><label htmlFor="member-name">Full name</label><input id="member-name" name="displayName" maxLength={120} required autoFocus /></div>
               <div className="field"><label htmlFor="member-email">Email address</label><input id="member-email" name="email" type="email" maxLength={254} autoComplete="off" required /></div>
@@ -157,7 +158,7 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
             </div>
             <div className="confirm-actions team-dialog-actions">
               <button type="button" className="button button-secondary" onClick={() => setAdding(false)}>Cancel</button>
-              <button className="button button-primary" disabled={busy === "add"}>{busy === "add" ? <LoaderCircle size={17} className="spin" /> : <UserPlus size={17} />}Add member</button>
+              <button className="button button-primary" disabled={busy === "add"}>{busy === "add" ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}Send invitation</button>
             </div>
           </form>
         </dialog>
@@ -166,14 +167,18 @@ export function TeamManager({ members, currentUserId }: { members: TeamMember[];
       {issued && (
         <dialog ref={issuedDialog} className="confirm-dialog" aria-labelledby="issued-title" onCancel={(event) => event.preventDefault()}>
           <div className="confirm-body">
-            <h2 id="issued-title">{issued.heading}</h2>
-            <p>Share these details with {issued.name} privately. <strong>This password is shown only once.</strong></p>
-            <div className="issued-details">
-              <span>Email</span><code>{issued.email}</code>
-              <span>Temporary password</span><code data-testid="temporary-password">{issued.password}</code>
-            </div>
+            <h2 id="issued-title">{issued.purpose === "invite" ? "Invitation" : "Password reset"} {issued.emailSent ? "sent" : "ready to share"}</h2>
+            {issued.emailSent ? (
+              <p className="issued-sent" data-testid="email-sent"><MailCheck size={17} /><span>Email sent to {issued.email}. The link expires in {issued.purpose === "invite" ? "7 days" : "1 hour"}.</span></p>
+            ) : (
+              <>
+                <p>Send this link to {issued.name} privately. <strong>It is shown only once</strong> and expires in {issued.purpose === "invite" ? "7 days" : "1 hour"}.</p>
+                <p className="issued-warning">The email could not be sent, so share the link yourself. If you expected an email, check the email settings on the server.</p>
+                <div className="issued-details"><span>{issued.email}</span><code data-testid="account-link">{issued.link}</code></div>
+              </>
+            )}
             <div className="confirm-actions team-dialog-actions">
-              <button type="button" className="button button-secondary" onClick={copyDetails}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy details"}</button>
+              {issued.link && <button type="button" className="button button-secondary" onClick={copyDetails}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy link"}</button>}
               <button type="button" className="button button-primary" onClick={closeIssued}>Done</button>
             </div>
           </div>

@@ -18,7 +18,10 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "device.logged_out": "Logged out a device",
   "device.removed": "Removed a device",
   "team.member_added": "Added a team member",
-  "team.reset_password": "Reset a member's password",
+  "team.invite_resent": "Resent an invitation",
+  "team.reset_sent": "Sent a password reset",
+  "auth.invite_accepted": "Accepted an invitation",
+  "auth.password_reset": "Reset their password",
   "team.set_role": "Changed a member's role",
   "team.set_active": "Changed a member's access",
 };

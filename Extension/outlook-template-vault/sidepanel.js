@@ -1,11 +1,11 @@
 (() => {
   const WEEK = 7 * 86400000;
+  const AUTO_SYNC_MS = 30000;
   const SORT_LABELS = { name: 'Name A–Z', recent: 'Recently updated' };
   const floating = new URLSearchParams(location.search).get('floating') === '1';
   const openedForSignIn = new URLSearchParams(location.search).get('signin') === '1';
   const ICONS = {
     tile: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
-    spark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.7 5.300 2.700 7.300 8 8-5.300.7-7.300 2.700-8 8-.7-5.300-2.700-7.300-8-8 5.300-.7 7.300-2.700 8-8z"/></svg>',
     more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5.500" r="1.800"/><circle cx="12" cy="12" r="1.800"/><circle cx="12" cy="18.500" r="1.800"/></svg>',
     clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     insert: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.500 10.500 12 15l4.500-4.500M5 20h14"/></svg>'
@@ -22,15 +22,14 @@
     menuTemplateId: null,
     previewTemplateId: null,
     recentOnly: false,
-    authMode: 'signIn',
     preferences: { sortOrder: 'name', closeAfterInsert: false },
     entitlements: { plan: 'Private', templateLimit: null, chromeSync: false, richEditor: true }
   };
 
   const el = Object.fromEntries([
     'templateList', 'skeletonList', 'emptyState', 'errorState', 'errorMessage', 'retryLoadBtn', 'searchInput', 'toast',
-    'signedOutView', 'signedInView', 'signedInTools', 'showSignInBtn', 'showCreateAccountBtn', 'authForm', 'authFormTitle',
-    'authNameField', 'authName', 'authEmail', 'authPassword', 'authError', 'authSubmitBtn', 'cancelAuthBtn',
+    'listView', 'signedOutView', 'signedInView', 'signedInTools', 'signinMenuBtn', 'authForm',
+    'authEmail', 'authPassword', 'authError', 'authSubmitBtn', 'forgotPasswordBtn',
     'accountAvatar', 'accountName', 'accountEmail', 'signOutBtn', 'syncBtn', 'templateCount', 'sortLabel',
     'menuBtn', 'navMenu', 'openSettingsBtn', 'openDashboardBtn', 'filterBtn', 'filterMenu', 'filterDot', 'recentOnlyBtn',
     'cardMenu', 'previewSheet', 'previewTitle', 'previewBody', 'previewInsertBtn', 'closePreviewBtn', 'addTemplateFab'
@@ -62,11 +61,6 @@
     return new Date(timestamp).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
-  function personName(email) {
-    const local = String(email || '').split('@')[0];
-    return local ? local.charAt(0).toUpperCase() + local.slice(1) : 'Shared library';
-  }
-
   function isRecent(template) {
     return Number.isFinite(template.updatedAt) && Date.now() - template.updatedAt < WEEK;
   }
@@ -85,25 +79,9 @@
     state.toastTimer = setTimeout(() => { el.toast.hidden = true; }, isError ? 4500 : 2800);
   }
 
-  function showAuthForm(mode) {
-    state.authMode = mode;
-    const registering = mode === 'signUp';
-    el.authForm.hidden = false;
-    el.showSignInBtn.hidden = true;
-    el.authNameField.hidden = !registering;
-    el.authName.required = registering;
-    el.authPassword.autocomplete = registering ? 'new-password' : 'current-password';
-    el.authFormTitle.textContent = registering ? 'Create account' : 'Sign in';
-    el.authSubmitBtn.textContent = registering ? 'Create account' : 'Sign in';
-    el.authError.hidden = true;
-    (registering ? el.authName : el.authEmail).focus();
-  }
-
-  function hideAuthForm() {
-    el.authForm.hidden = true;
+  function clearAuthForm() {
     el.authError.hidden = true;
     el.authForm.reset();
-    el.showSignInBtn.hidden = false;
   }
 
   function currentUser() {
@@ -122,7 +100,7 @@
       el.accountName.textContent = name;
       el.accountEmail.textContent = email;
       el.accountAvatar.textContent = (name || email || 'A').slice(0, 1).toUpperCase();
-      hideAuthForm();
+      clearAuthForm();
     }
     render();
   }
@@ -137,7 +115,6 @@
       if (auth.user?.mustChangePassword) {
         await ExtensionAuth.signOut();
         state.authChecked = true;
-        showAuthForm('signIn');
         el.authError.textContent = 'Change your temporary password in the web dashboard, then sign in here.';
         el.authError.hidden = false;
         return 'signedOut';
@@ -168,20 +145,15 @@
   function cardHtml(template) {
     const name = escapeHtml(template.name);
     const updated = relativeTime(template.updatedAt);
-    const person = personName(template.updatedBy);
     return `
       <div class="card-top">
         <span class="card-tile">${ICONS.tile}</span>
         <span class="template-name" title="${name}">${name}</span>
-        ${isRecent(template) ? `<span class="chip">${ICONS.spark}Updated</span>` : ''}
+        <button class="template-insert" type="button" aria-label="Insert ${name} into Outlook">${ICONS.insert}<span>Insert<span class="insert-word"> Template</span></span></button>
         <button class="card-more" type="button" data-menu="${escapeHtml(template.id)}" aria-label="More actions for ${name}" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
       </div>
       <p class="template-preview">${escapeHtml(plainPreview(template.html) || 'Empty template')}</p>
-      ${updated ? `<div class="card-meta">${ICONS.clock}<span>Updated ${escapeHtml(updated)}</span></div>` : ''}
-      <div class="card-action">
-        <span class="person"><span class="avatar">${escapeHtml(person.charAt(0))}</span><span>${escapeHtml(person)}</span></span>
-        <button class="template-insert" type="button" aria-label="Insert ${name} into Outlook">${ICONS.insert}Insert Template</button>
-      </div>`;
+      ${updated ? `<div class="card-meta">${ICONS.clock}<span>Updated ${escapeHtml(updated)}</span></div>` : ''}`;
   }
 
   function render() {
@@ -194,6 +166,7 @@
     const showTools = !checking && !signedOut;
 
     el.signedOutView.hidden = !signedOut;
+    el.listView.classList.toggle('is-signed-out', signedOut);
     el.signedInTools.hidden = !showTools;
     el.skeletonList.hidden = !loading;
     el.errorState.hidden = !(!checking && state.loadFailed && !state.templates.length && !signedOut);
@@ -236,7 +209,9 @@
   async function loadTemplates({ quiet = false } = {}) {
     if (state.refreshing) { state.refreshAgain = true; return; }
     state.refreshing = true;
-    setSyncing(true);
+    // Background refreshes stay invisible. Only a click on Sync shows activity.
+    if (!quiet) setSyncing(true);
+    const firstLoad = !state.loaded || state.loadFailed;
     try {
       const result = await TemplateStorage.load();
       if (result.entitlements) state.entitlements = result.entitlements;
@@ -246,8 +221,10 @@
       });
       state.loadFailed = false;
       state.loaded = true;
-      if (templateFingerprint(nextTemplates) !== templateFingerprint(state.templates)) state.templates = nextTemplates;
-      renderAccount(globalThis.ExtensionAuth?.getState());
+      const changed = templateFingerprint(nextTemplates) !== templateFingerprint(state.templates);
+      if (changed) state.templates = nextTemplates;
+      // Unchanged results leave the list alone, so nothing flickers and open menus stay open.
+      if (changed || firstLoad) renderAccount(globalThis.ExtensionAuth?.getState());
       if (!result.remote && result.error && !quiet) showToast(result.error, true);
     } catch (error) {
       state.loaded = true;
@@ -325,6 +302,7 @@
     el.filterMenu.hidden = true;
     el.cardMenu.hidden = true;
     el.menuBtn.setAttribute('aria-expanded', 'false');
+    el.signinMenuBtn.setAttribute('aria-expanded', 'false');
     el.filterBtn.setAttribute('aria-expanded', 'false');
     document.querySelector('.card-more[aria-expanded="true"]')?.setAttribute('aria-expanded', 'false');
     state.menuTemplateId = null;
@@ -345,7 +323,13 @@
     closeMenus();
     if (!opening) return;
     if (place) placeMenu(menu, anchor);
-    else menu.hidden = false;
+    else {
+      // Opens from the button's left edge, wherever that button sits.
+      menu.hidden = false;
+      const rect = anchor.getBoundingClientRect();
+      menu.style.left = `${Math.max(12, Math.min(innerWidth - menu.offsetWidth - 12, rect.left))}px`;
+      menu.style.top = `${rect.bottom + 6}px`;
+    }
     anchor.setAttribute('aria-expanded', 'true');
     menu.querySelector('button:not([hidden])')?.focus({ preventScroll: true });
   }
@@ -441,9 +425,7 @@
     if (saved) state.preferences = saved;
   }
 
-  el.showSignInBtn.addEventListener('click', () => showAuthForm('signIn'));
-  el.showCreateAccountBtn.hidden = true;
-  el.cancelAuthBtn.addEventListener('click', hideAuthForm);
+  el.forgotPasswordBtn.addEventListener('click', () => openPortal('/forgot-password'));
   el.authForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     el.authSubmitBtn.disabled = true;
@@ -455,11 +437,9 @@
       if (account.user?.mustChangePassword) {
         // Otherwise the panel looks signed in while every template request is refused.
         await ExtensionAuth.signOut();
-        showAuthForm('signIn');
         throw new Error('Change your temporary password in the web dashboard, then sign in here.');
       }
       el.authForm.reset();
-      el.authForm.hidden = true;
       state.loaded = false;
       render();
       await loadTemplates({ quiet: true });
@@ -514,10 +494,12 @@
     loadTemplates().catch((error) => console.error(error));
   });
 
-  el.menuBtn.addEventListener('click', (event) => {
-    event.stopPropagation();
-    toggleMenu(el.navMenu, el.menuBtn, false);
-  });
+  for (const button of [el.menuBtn, el.signinMenuBtn]) {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleMenu(el.navMenu, button, false);
+    });
+  }
   el.openSettingsBtn.addEventListener('click', () => { closeMenus(); chrome.runtime.openOptionsPage(); });
   el.openDashboardBtn.addEventListener('click', () => { closeMenus(); openPortal('/dashboard'); });
   el.addTemplateFab.addEventListener('click', () => openPortal('/templates'));
@@ -599,6 +581,16 @@
     render();
   });
 
+  // Keeps the list current without anyone pressing Sync.
+  function autoSync() {
+    if (document.hidden || !state.authChecked || state.refreshing) return;
+    if (!currentUser() && !state.templates.length) return;
+    loadTemplates({ quiet: true }).catch(console.error);
+  }
+  window.addEventListener('focus', autoSync);
+  document.addEventListener('visibilitychange', autoSync);
+  setInterval(autoSync, AUTO_SYNC_MS);
+
   renderAccount(null);
   (async () => {
     await loadPreferences();
@@ -607,6 +599,7 @@
     if (session === 'signedOut') {
       state.loaded = true;
       render();
+      el.authEmail.focus();
       return;
     }
     render();

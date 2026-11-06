@@ -191,8 +191,9 @@ test('signed out shows the sign-in card and no misleading empty state', async (t
   await expect(page.locator('#searchInput')).toBeHidden();
   await expect(page.locator('#syncBtn')).toBeHidden();
   await expect(page.locator('#addTemplateFab')).toBeHidden();
-  await page.locator('#showSignInBtn').click();
   await expect(page.locator('#authEmail')).toBeFocused();
+  await expect(page.locator('#authSubmitBtn')).toBeVisible();
+  await expect(page.locator('#showSignInBtn')).toHaveCount(0);
   assert.deepEqual(errors, []);
 });
 
@@ -398,7 +399,6 @@ async function signInPage(t, loginResponse) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(`${base}/sidepanel.html`);
-  await page.locator('#showSignInBtn').click();
   await page.locator('#authEmail').fill('person@example.com');
   await page.locator('#authPassword').fill('fixture-value-1');
   await page.locator('#authSubmitBtn').click();
@@ -462,6 +462,71 @@ async function startupPage(t, { token, meDelay = 0, meStatus = 200, mustChange =
   return page;
 }
 
+test('the sign-in card holds the menu and app name, sits in the centre, and its menu works', async (t) => {
+  const page = await startupPage(t, {});
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  await expect(page.locator('.topbar')).toBeHidden();
+  await expect(page.locator('#signedOutView .signin-brand')).toHaveText('Mail Template Vault');
+  for (const size of [{ width: 380, height: 720 }, { width: 1400, height: 800 }]) {
+    await page.setViewportSize(size);
+    const card = await page.locator('#signedOutView').boundingBox();
+    assert.ok(Math.abs(card.x + card.width / 2 - size.width / 2) <= 2, 'centred across');
+    assert.ok(Math.abs(card.y + card.height / 2 - size.height / 2) <= 16, 'centred down');
+  }
+  await page.locator('#signinMenuBtn').click();
+  await expect(page.locator('#openSettingsBtn')).toBeVisible();
+  const [button, menu] = await Promise.all([page.locator('#signinMenuBtn').boundingBox(), page.locator('#navMenu').boundingBox()]);
+  assert.ok(Math.abs(button.x - menu.x) <= 2, 'menu opens from its button');
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 380, height: 360 });
+  await page.locator('#forgotPasswordBtn').scrollIntoViewIfNeeded();
+  await expect(page.locator('#forgotPasswordBtn')).toBeInViewport();
+});
+
+test('cards are compact: one row with Insert, no name row and no Updated badge', async (t) => {
+  const page = await startupPage(t, { token: 'saved' });
+  await expect(page.locator('.template-card')).toHaveCount(2);
+  const first = page.locator('.template-card').first();
+  await expect(first.locator('.card-top .template-insert')).toBeVisible();
+  await expect(first.locator('.card-meta')).toContainText('Updated');
+  assert.equal(await first.locator('.chip, .person, .avatar, .card-action').count(), 0);
+  const [insert, name] = await Promise.all([first.locator('.template-insert').boundingBox(), first.locator('.template-name').boundingBox()]);
+  assert.ok(Math.abs((insert.y + insert.height / 2) - (name.y + name.height / 2)) <= 3, 'Insert shares the name row');
+  await page.setViewportSize({ width: 304, height: 544 });
+  await expect(first.locator('.template-insert')).toHaveText('Insert', { useInnerText: true });
+  assert.ok((await first.locator('.template-name').boundingBox()).width >= 90, 'the name keeps room at the smallest size');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test('the popover starts at its minimum on the right, grows with the grip, and never goes below the minimum', async (t) => {
+  const context = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+  t.after(() => context.close());
+  await context.addInitScript(() => {
+    window.saved = [];
+    window.chrome = { runtime: { id: 'x', getURL: (name) => name, sendMessage: async (message) => {
+      if (message.type === 'ETM_FLOAT_STATE_SET') window.saved.push(message.state);
+      return { ok: true, result: null };
+    }, onMessage: { addListener: (fn) => { window.listener = fn; } } } };
+  });
+  const page = await context.newPage();
+  await page.goto(`${base}/sidepanel.html`);
+  await page.addScriptTag({ url: `${base}/floating.js` });
+  await page.evaluate(() => new Promise((resolve) => window.listener({ type: 'ETM_TOGGLE_VAULT' }, { id: 'x' }, resolve)));
+  await page.waitForTimeout(100);
+  const last = () => page.evaluate(() => window.saved.at(-1));
+  const right = 1100 - 24;
+  const bottom = 72 + 544;
+  const drag = async (x, y, toX, toY) => { await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(toX, toY, { steps: 4 }); await page.mouse.up(); await page.waitForTimeout(50); };
+  await drag(right - 12, bottom - 12, right + 40, bottom + 60);
+  let state = await last();
+  assert.equal(Math.round(state.width), 320, 'grows, and stops at the edge of the window');
+  assert.equal(Math.round(state.height), 544 + 72);
+  await drag(state.left + state.width - 12, state.top + state.height - 12, 100, 100);
+  state = await last();
+  assert.equal(Math.round(state.width), 304, 'width stops at the minimum');
+  assert.equal(Math.round(state.height), 544, 'height stops at the minimum');
+});
+
 test('with no saved session the sign-in screen shows at once, with no network or template request', async (t) => {
   const page = await startupPage(t, {});
   await expect(page.locator('#signedOutView')).toBeVisible();
@@ -494,6 +559,34 @@ test('a saved session that needs a new password explains it instead of failing s
   const page = await startupPage(t, { token: 'temp', mustChange: true });
   await expect(page.locator('#signedOutView')).toBeVisible();
   await expect(page.locator('#authError')).toContainText('Change your temporary password');
+  assert.equal(await page.evaluate(() => window.templateCalls), 0);
+});
+
+test('templates update by themselves when returning to the panel, without rebuilding an unchanged list', async (t) => {
+  const page = await startupPage(t, { token: 'saved' });
+  await expect(page.locator('.template-card')).toHaveCount(2);
+  await page.evaluate(() => { window.firstCard = document.querySelector('.template-card'); });
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await page.waitForFunction(() => window.templateCalls >= 2);
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.firstCard.isConnected), true, 'an unchanged list must not be rebuilt');
+  assert.equal(await page.locator('#syncBtn').evaluate((node) => node.classList.contains('is-syncing')), false);
+  await page.evaluate(() => {
+    const original = chrome.runtime.sendMessage;
+    chrome.runtime.sendMessage = async (message) => message.type === 'ETM_STORAGE'
+      ? { ok: true, result: { remote: true, templates: [{ id: 'gamma', name: 'Gamma new', html: '<p>New one</p>', updatedAt: Date.now(), updatedBy: 'x@example.com', serverVersion: 1 }] } }
+      : original(message);
+    window.dispatchEvent(new Event('focus'));
+  });
+  await expect(page.locator('.template-name')).toHaveText(['Gamma new']);
+  await expect(page.locator('#templateCount')).toHaveText('1 Templates');
+});
+
+test('background refresh does not run while signed out', async (t) => {
+  const page = await startupPage(t, {});
+  await expect(page.locator('#signedOutView')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => window.templateCalls), 0);
 });
 

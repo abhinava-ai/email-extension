@@ -1,9 +1,9 @@
 (() => {
   if (globalThis.__MAIL_TEMPLATE_VAULT_FLOATING_INITIALIZED__) return;
   globalThis.__MAIL_TEMPLATE_VAULT_FLOATING_INITIALIZED__ = true;
-  const MIN_WIDTH = 330;
-  const MIN_HEIGHT = 320;
-  const DEFAULT_WIDTH = 380;
+  // The smallest and the starting size. It can be made larger, never smaller.
+  const MIN_WIDTH = 304;
+  const MIN_HEIGHT = 544;
   let host;
   let box;
   let bubble;
@@ -42,14 +42,18 @@
     saveTimer = setTimeout(save, 250);
   }
 
+  // A short window can't fit the full minimum, and the popover must stay on screen.
+  function smallestHeight() {
+    return Math.min(MIN_HEIGHT, innerHeight - 16);
+  }
+
   function defaultGeometry() {
-    const height = clamp(680, MIN_HEIGHT, innerHeight - 96);
-    return { left: Math.max(8, innerWidth - DEFAULT_WIDTH - 24), top: 72, width: DEFAULT_WIDTH, height };
+    return { left: Math.max(8, innerWidth - MIN_WIDTH - 24), top: 72, width: MIN_WIDTH, height: smallestHeight() };
   }
 
   function fitGeometry(value) {
-    const width = clamp(Number(value.width) || DEFAULT_WIDTH, MIN_WIDTH, innerWidth - 16);
-    const height = clamp(Number(value.height) || 680, MIN_HEIGHT, innerHeight - 16);
+    const width = clamp(Number(value.width) || MIN_WIDTH, MIN_WIDTH, innerWidth - 16);
+    const height = clamp(Number(value.height) || MIN_HEIGHT, smallestHeight(), innerHeight - 16);
     return {
       width,
       height,
@@ -112,7 +116,7 @@
     shadow.innerHTML = `
       <style>
         *{box-sizing:border-box}[hidden]{display:none!important}
-        .window{position:fixed;min-width:${MIN_WIDTH}px;min-height:${MIN_HEIGHT}px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);display:flex;flex-direction:column;overflow:hidden;resize:both;border:1px solid rgba(17,24,39,.08);border-radius:20px;background:#f7f8fa;box-shadow:0 24px 64px rgba(10,18,32,.24),0 2px 8px rgba(10,18,32,.08);pointer-events:auto;animation:pop .18s cubic-bezier(.2,.8,.2,1)}
+        .window{position:fixed;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(17,24,39,.08);border-radius:20px;background:#f7f8fa;box-shadow:0 24px 64px rgba(10,18,32,.24),0 2px 8px rgba(10,18,32,.08);pointer-events:auto;animation:pop .18s cubic-bezier(.2,.8,.2,1)}
         @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
         .bar{height:30px;flex:none;display:flex;align-items:center;justify-content:flex-end;gap:2px;padding:4px 8px 0;background:#f7f8fa;cursor:move;user-select:none;touch-action:none;position:relative}
         .grip{position:absolute;left:50%;top:9px;width:36px;height:4px;margin-left:-18px;border-radius:4px;background:#d5d9e0}
@@ -120,6 +124,9 @@
         .bar button:hover{color:#111827;background:#e8eaee}
         .bar button:focus-visible,.bubble:focus-visible{outline:2px solid #2f80ed;outline-offset:2px}
         .bar svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+        .grip-resize{position:absolute;right:3px;bottom:3px;z-index:2;width:20px;height:20px;display:grid;place-items:center;color:#a9afb9;cursor:nwse-resize;touch-action:none;border-radius:0 0 16px 0;transition:color .15s}
+        .grip-resize:hover{color:#5b6472}
+        .grip-resize svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
         iframe{width:100%;height:100%;flex:1;min-height:0;border:0;background:#f7f8fa}
         .bubble{position:fixed;right:22px;bottom:22px;width:54px;height:54px;padding:0;display:grid;place-items:center;color:#fff;background:#17181c;border:0;border-radius:50%;box-shadow:0 12px 28px rgba(10,18,32,.34);pointer-events:auto;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;animation:pop .18s cubic-bezier(.2,.8,.2,1)}
         .bubble:hover{transform:scale(1.06);box-shadow:0 16px 34px rgba(10,18,32,.38)}
@@ -134,6 +141,7 @@
           <button class="close" type="button" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
         </header>
         <iframe title="Mail Template Vault" allow="clipboard-write"></iframe>
+        <span class="grip-resize" title="Drag to resize" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M11 3 3 11M11 8 8 11"></path></svg></span>
       </section>
       <button class="bubble" type="button" title="Open Mail Template Vault" aria-label="Restore Mail Template Vault" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
@@ -168,7 +176,30 @@
     });
     bar.addEventListener('pointerup', endDrag);
     bar.addEventListener('pointercancel', endDrag);
-    // mouseup never reaches this page when a resize ends over the iframe.
+
+    let resizing = null;
+    const grip = shadow.querySelector('.grip-resize');
+    const endResize = () => {
+      if (!resizing) return;
+      resizing = null;
+      setFrameInteractive(true);
+      save();
+    };
+    grip.addEventListener('pointerdown', (event) => {
+      const rect = box.getBoundingClientRect();
+      resizing = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height, left: rect.left, top: rect.top };
+      setFrameInteractive(false);
+      grip.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    grip.addEventListener('pointermove', (event) => {
+      if (!resizing) return;
+      box.style.width = `${clamp(resizing.width + event.clientX - resizing.x, MIN_WIDTH, innerWidth - resizing.left - 8)}px`;
+      box.style.height = `${clamp(resizing.height + event.clientY - resizing.y, smallestHeight(), innerHeight - resizing.top - 8)}px`;
+    });
+    grip.addEventListener('pointerup', endResize);
+    grip.addEventListener('pointercancel', endResize);
+    // Also covers the window being fitted back on screen.
     new ResizeObserver(saveSoon).observe(box);
     window.addEventListener('resize', keepInsideViewport);
     document.documentElement.appendChild(host);

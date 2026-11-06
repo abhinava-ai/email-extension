@@ -4,6 +4,10 @@ Use a Hostinger Business/Unlimited or Cloud plan with Node.js Web Apps and MySQL
 
 Configure the values documented in `.env.example`. Use `DB_HOST=127.0.0.1`; never commit real values.
 
+## Invitation email
+
+To send invitation and password-reset emails, set `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM` in hPanel (a mailbox such as `noreply@abhinava.ai`), and make sure `APP_ORIGIN` is the live address. `SMTP_HOST` and `SMTP_PORT` default to Hostinger. Restart the app afterwards. Until then, the Team page shows a one-time link to share by hand. The `account_tokens` table is created automatically on first use.
+
 ## First deployment
 
 1. Create the MySQL database and user in hPanel.

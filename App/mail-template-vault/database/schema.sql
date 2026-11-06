@@ -46,6 +46,19 @@ create table if not exists templates (
   index templates_updated_idx (deleted_at, updated_at)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
+create table if not exists account_tokens (
+  id char(36) primary key,
+  user_id char(36) not null,
+  token_hash char(64) not null unique,
+  purpose enum('invite','reset') not null,
+  expires_at timestamp(3) not null,
+  used_at timestamp(3) null,
+  created_by char(36) null,
+  created_at timestamp(3) not null default current_timestamp(3),
+  constraint account_tokens_user_fk foreign key (user_id) references users(id) on delete cascade,
+  index account_tokens_user_idx (user_id, created_at)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+
 create table if not exists audit_events (
   id bigint unsigned auto_increment primary key,
   user_id char(36), event_type varchar(80) not null,
