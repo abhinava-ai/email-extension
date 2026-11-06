@@ -28,13 +28,15 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outl
 svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .app-shell { height: 100vh; overflow: hidden; }
-.view { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 14px 14px 0; overflow: hidden; }
+/* One readable column, whether this runs in a narrow panel, a popover, a wide panel or a full tab. */
+.view { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 480px; height: 100%; min-height: 0; margin: 0 auto; padding: 14px 14px 0; overflow: hidden; }
 
 /* Header */
 .topbar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; margin-bottom: 14px; }
 .title-block { min-width: 0; text-align: center; }
 h1 { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 0; font-size: 16px; line-height: 1.25; font-weight: 650; letter-spacing: -.01em; }
-.title-count { min-height: 16px; margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.title-count { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.title-count:empty { display: none; }
 h2 { font-size: 15px; font-weight: 650; margin: 12px 0 4px; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .round-btn { width: 40px; height: 40px; display: grid; place-items: center; padding: 0; color: var(--text); background: var(--surface); border: 0; border-radius: 50%; box-shadow: 0 1px 3px rgba(10, 18, 32, .08), 0 0 0 1px rgba(10, 18, 32, .03); transition: background .15s, transform .15s var(--ease); }
@@ -107,6 +109,11 @@ h2 { font-size: 15px; font-weight: 650; margin: 12px 0 4px; }
 .auth-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47, 128, 237, .14); }
 .auth-form-actions { display: grid; gap: 4px; justify-items: center; }
 
+/* A full tab has room, so sign-in sits lower and breathes. */
+@media (min-width: 560px) and (min-height: 520px) {
+  .signin-card { margin-top: 8vh; padding: 32px 28px 26px; box-shadow: var(--shadow); }
+}
+
 /* Buttons */
 .primary, .secondary { min-height: 38px; padding: 0 14px; border: 1px solid transparent; border-radius: 12px; font-weight: 600; transition: background .15s, transform .15s var(--ease); }
 .primary { color: #fff; background: var(--accent); }
@@ -127,7 +134,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 12px 0 4px; }
 /* Menus */
 .menu { position: fixed; z-index: 40; min-width: 196px; max-width: calc(100vw - 24px); padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--pop-shadow); animation: menu-in .14s var(--ease); }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
-.nav-menu { left: 14px; top: 62px; width: min(270px, calc(100vw - 28px)); }
+.nav-menu { left: max(14px, calc(50% - 226px)); top: 62px; width: min(270px, calc(100vw - 28px)); }
 .menu-item { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; color: var(--text); background: transparent; border: 0; border-radius: 9px; font-size: 13px; text-align: left; transition: background .12s; }
 .menu-item:hover, .menu-item:focus-visible { background: var(--surface-2); }
 .menu-item[aria-checked="true"]::after { content: ""; width: 9px; height: 5px; margin-left: auto; border-bottom: 2px solid var(--blue); border-left: 2px solid var(--blue); transform: rotate(-45deg); }
@@ -143,7 +150,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 12px 0 4px; }
 /* Preview sheet */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 45; display: flex; align-items: flex-end; background: rgba(10, 18, 32, .34); animation: fade .16s ease; }
 @keyframes fade { from { opacity: 0; } }
-.sheet { width: 100%; max-height: 86%; display: flex; flex-direction: column; background: var(--bg); border-radius: 20px 20px 0 0; animation: sheet-in .22s var(--ease); }
+.sheet { width: 100%; max-width: 480px; max-height: 86%; display: flex; flex-direction: column; margin: 0 auto; background: var(--bg); border-radius: 20px 20px 0 0; animation: sheet-in .22s var(--ease); }
 @keyframes sheet-in { from { transform: translateY(24px); } to { transform: none; } }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 14px 10px; }
 .sheet-head h2 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
