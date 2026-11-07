@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Mail Template Vault", template: "%s · Mail Template Vault" },
-  description: "Manage shared Outlook email templates for your private workspace.",
+  description: "Private workspace.",
+  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false, noimageindex: true } },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
