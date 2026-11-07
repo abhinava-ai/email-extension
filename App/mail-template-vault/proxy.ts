@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isCrawler } from "@/lib/crawlers";
 
 const publicPaths = new Set(["/", "/login", "/forgot-password", "/set-password"]);
 
 export function proxy(request: NextRequest) {
+  // Hostinger can replace robots.txt on its temporary addresses, so the app also refuses these itself.
+  if (isCrawler(request.headers.get("user-agent"))) return new NextResponse(null, { status: 403, headers: { "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet, noimageindex" } });
   const token = request.cookies.get("mtv_session")?.value;
   const path = request.nextUrl.pathname;
   if (!token && !publicPaths.has(path) && !path.startsWith("/api/")) {
